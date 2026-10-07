@@ -12,7 +12,7 @@ export const mapQueue = (r: Row): QueueRecord => ({ id: s(r.QueueEntryId), queue
 export const mapTransaction = (r: Row): Transaction => ({ id: s(r.TransactionId), reference: s(r.Reference), reservationId: s(r.ReservationId), customerEmail: s(r.CustomerEmail), staffEmail: s(r.StaffEmail), totalAmount: n(r.TotalAmount), status: s(r.StatusName), paymentMethod: s(r.PaymentMethodName), createdAt: date(r.CreatedAt) });
 
 export class SqlServerRepository implements SharePointRepository {
-  constructor(private db: SqlExecutor) {}
+  constructor(public readonly db: SqlExecutor) {}
   async getCategories() { return (await this.db.query<Row>("SELECT CategoryId,CategoryName,IsActive FROM dbo.Categories")).map(mapCategory); }
   async getProducts() { return (await this.db.query<Row>("SELECT ProductId,CategoryId,SKU,ProductName,Description,Price,ImageUrl,IsFeatured,IsActive FROM dbo.Products")).map(mapProduct); }
   async getProductById(id: string) { const r = (await this.db.query<Row>("SELECT ProductId,CategoryId,SKU,ProductName,Description,Price,ImageUrl,IsFeatured,IsActive FROM dbo.Products WHERE ProductId=@id", { id: Number(id) }))[0]; return r && mapProduct(r); }

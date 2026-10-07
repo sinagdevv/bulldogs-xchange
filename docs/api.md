@@ -10,5 +10,6 @@ Admin: dashboard and CRUD/status contracts for products, categories, variants, i
 
 Catalog query parameters: `search`, `category`, `featured`, `active`, `sort` (`title`, `price`, `-price`).
 
-Export TODO: CSV, Excel, PDF, email delivery, and scheduled reports are domain contracts only.
+SQL retryable writes (`POST /api/reservations`, inventory restock, and transaction processing) require `Idempotency-Key`. Inventory adjustment uses an explicit signed `changeQty` delta; it never changes reserved quantity.
 
+Export TODO: CSV, Excel, PDF, email delivery, and scheduled reports are domain contracts only.

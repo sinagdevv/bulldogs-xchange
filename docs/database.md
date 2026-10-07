@@ -34,6 +34,7 @@ Copy `.env.example` to ignored `.env.local` and set `SQL_SERVER`, `SQL_PORT`, `S
 - `npm run db:schema` — idempotent schema
 - `npm run db:seed:reference` — idempotent reference data
 - `npm run db:seed:demo` — optional demo records, no passwords
+- `npm run db:workflows` — additive idempotency, outbox, and workflow constraints
 - `npm run db:verify` — tables, constraints, reference counts, derived availability
 - `npm run db:smoke` — live read checks for catalog, inventory, and settings
 
@@ -44,3 +45,5 @@ After schema creation, the developer may remove `db_ddladmin` from `bulldogs_app
 `Categories → Categories`, `Products → Products`, `Product Variants → ProductVariants`, `Inventory → Inventory`, `Users → Users`, `Reservations → Reservations`, `Reservation Items → ReservationItems`, `Queues → QueueEntries`, `Transactions → Transactions`, `Transaction Items → TransactionItems`, `Inventory Movements → InventoryMovements`, `Notifications → Notifications`, `Audit Logs → AuditLogs`, `System Settings → SystemSettings`.
 
 Possible future import sources are CSV, Excel, or a Power Automate read flow. No migration or dual-write runs automatically.
+
+Inventory movement `PreviousQty`, `ChangeQty`, and `ResultingQty` describe physical quantity. `PreviousReservedQuantity` and `ResultingReservedQuantity` record reservation changes explicitly; reserve/release movements therefore have physical `ChangeQty = 0`.

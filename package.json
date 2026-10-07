@@ -13,8 +13,11 @@
     "db:schema": "node scripts/db.mjs schema",
     "db:seed:reference": "node scripts/db.mjs reference",
     "db:seed:demo": "node scripts/db.mjs demo",
+    "db:workflows": "node scripts/db.mjs workflows",
     "db:verify": "node scripts/db.mjs verify",
     "db:smoke": "node scripts/db.mjs smoke"
+    ,"test:sql:workflows": "node --env-file=.env.local scripts/workflow-smoke.mjs",
+    "test:sql:concurrency": "node --env-file=.env.local scripts/concurrency-smoke.mjs"
   },
   "dependencies": {
     "mssql": "^12.7.4",
