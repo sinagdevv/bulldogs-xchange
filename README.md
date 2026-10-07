@@ -18,6 +18,8 @@ npm run dev
 
 Set `ENABLE_DEV_AUTH=true` and `DEV_AUTH_EMAIL=customer@example.test` only for local testing. You may also send `x-dev-user` with one of the fake accounts. Never enable this in production.
 
+Production authentication validates provider-issued OIDC bearer tokens and maps their verified email to the SQL Users table; SQL remains authoritative for activation and roles. Configure `AUTH_ISSUER`, `AUTH_AUDIENCE`, `AUTH_JWKS_URL`, and `FRONTEND_ORIGIN`. See [Production authentication](docs/authentication.md).
+
 Production defaults to `DATA_PROVIDER=sqlserver`. SharePoint, Power Automate repository, and in-memory providers remain legacy/development adapters; production never falls back to mock mode.
 
 The transactional outbox has validated real Outlook delivery through `BX-NotifyEvent` for `ReservationCreated`, `ReservationReady`, `QueueCalled`, `TransactionCompleted`, and `ReservationCancelled`. `PA_NOTIFY_EVENT_URL` and `BX_AUTOMATION_SECRET` are server-only. See [Power Automate contracts](docs/power-automate-contracts.md).

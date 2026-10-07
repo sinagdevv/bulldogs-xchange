@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { AppError } from "./lib/errors.js";
-import { ok, secure, sendError, type RequestLike, type ResponseLike } from "./lib/http.js";
+import { cors, ok, secure, sendError, type RequestLike, type ResponseLike } from "./lib/http.js";
 import { createRepository } from "./repositories/provider.js";
 import { ProductionSharePointRepository } from "./repositories/production-sharepoint-repository.js";
 import { SqlServerRepository } from "./repositories/sql-server-repository.js";
@@ -26,14 +26,16 @@ const adminCatalogResources=["products","categories","variants"];
 const knownAdminMutation=(method:string,parts:string[])=>method==="POST"&&adminCatalogResources.includes(parts[1]??"")&&parts.length===2||method==="PUT"&&((adminCatalogResources.includes(parts[1]??"")&&(parts.length===3||parts[3]==="active"&&parts.length===4))||(parts[1]==="users"&&parts[3]==="role"&&parts.length===4)||(parts[1]==="settings"&&parts.length===3));
 
 export async function handle(req: RequestLike, res: ResponseLike): Promise<void> {
-  secure(res); if (req.method === "OPTIONS") { res.setHeader("Allow", "GET,POST,PUT,OPTIONS"); res.status(204).end?.(); return; }
+  secure(res);
   try {
+    cors(req,res); if (req.method === "OPTIONS") { res.setHeader("Allow", "GET,POST,PUT,OPTIONS"); res.status(204).end?.(); return; }
     const method = req.method ?? "GET", parts = pathOf(req), route = parts.join("/"), id = parts[1];
     if (method === "GET" && route === "health") return void res.status(200).json(ok({ status: "healthy", service: "bulldogs-xchange" }));
     if(route.startsWith("internal/outbox/")&&!outbox) throw new AppError("CONFIGURATION_ERROR","SQL outbox is unavailable.");
     if(route.startsWith("internal/outbox/")){requireDispatchSecret(req); if(route==="internal/outbox/dispatch"&&method==="POST") return void res.status(200).json(ok(await outbox!.dispatchBatch())); if(route==="internal/outbox/health"&&method==="GET") return void res.status(200).json(ok(await outbox!.health())); if(route==="internal/outbox/dead-letters"&&method==="GET") return void res.status(200).json(ok(await outbox!.deadLetters())); if(parts[2]==="dead-letters"&&parts[3]&&parts[4]==="retry"&&method==="POST") return void res.status(200).json(ok(await outbox!.retryDeadLetter(parts[3])));}
     if (method === "GET" && route === "internal/integrations/sharepoint") { if (process.env.NODE_ENV === "production") await requireAdmin(auth, req); if (!(repository instanceof ProductionSharePointRepository)) return void res.status(200).json(ok({ configured: false, reachable: false, site: null, listsResolved: 0 })); return void res.status(200).json(ok(await repository.health())); }
     if (method === "GET" && route === "config/public") return void res.status(200).json(ok({ campusPickupOnly: true }));
+    if (method === "GET" && route === "session") { const user=await auth.getCurrentUser(req); return void res.status(200).json(ok(user?{authenticated:true,user:{id:user.id,name:user.displayName,email:user.email,role:user.role,department:user.department,customerType:user.customerType}}:{authenticated:false,user:null})); }
     if (method === "GET" && route === "me") return void res.status(200).json(ok(await requireAuthenticated(auth, req)));
     if (method === "GET" && route === "categories") return void res.status(200).json(ok(await catalog.getCategories()));
     if (method === "GET" && route === "products") return void res.status(200).json(ok(await catalog.getProducts({ search: String(req.query?.search ?? "") || undefined, category: String(req.query?.category ?? "") || undefined, featured: bool(req.query?.featured), active: bool(req.query?.active), sort: req.query?.sort as "title" | "price" | "-price" | undefined })));

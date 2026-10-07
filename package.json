@@ -24,6 +24,7 @@
     "test:sql:concurrency": "node --env-file=.env.local scripts/concurrency-smoke.mjs"
   },
   "dependencies": {
+    "jose": "^6.2.12",
     "mssql": "^12.7.4",
     "zod": "^4.1.12"
   },

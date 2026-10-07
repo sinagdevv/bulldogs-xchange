@@ -1,6 +1,6 @@
 # REST API
 
-Public: `GET /api/health`, `/api/config/public`, `/api/categories`, `/api/products`, `/api/products/:id`, `/api/products/:id/variants`, `/api/products/:id/availability`.
+Public: `GET /api/health`, `/api/config/public`, `/api/session`, `/api/categories`, `/api/products`, `/api/products/:id`, `/api/products/:id/variants`, `/api/products/:id/availability`. `/api/session` returns deterministic authenticated/unauthenticated state and only safe SQL-backed user fields.
 
 Authenticated: `GET /api/me`, `/api/profile`, `/api/reservations`, `/api/reservations/:id`, `/api/notifications`; `POST /api/reservations`, `/api/reservations/:id/cancel`, `/api/queue/join`, `/api/queue/leave`, `/api/notifications/:id/read`, `/api/notifications/read-all`; `GET /api/queue/me`, `/api/queue/status`. Notification reads and read-state writes are scoped to the authenticated customer.
 

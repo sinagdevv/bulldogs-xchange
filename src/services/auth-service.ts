@@ -2,21 +2,27 @@ import type { Role, User } from "../domain/models.js";
 import { AppError } from "../lib/errors.js";
 import type { RequestLike } from "../lib/http.js";
 import type { SharePointRepository } from "../repositories/repository.js";
+import { OidcAuthProvider, type AuthProvider } from "../auth/auth-provider.js";
 
 export class AuthService {
-  constructor(private repo: SharePointRepository) {}
+  constructor(private repo: SharePointRepository,private provider:AuthProvider=new OidcAuthProvider()) {}
 
   async getCurrentUser(req: RequestLike): Promise<User | null> {
-    if (process.env.ENABLE_DEV_AUTH !== "true") return null;
-    if (process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production") throw new AppError("CONFIGURATION_ERROR", "Development authentication is disabled in production.");
-    const email = String(req.headers["x-dev-user"] ?? process.env.DEV_AUTH_EMAIL ?? "").toLowerCase();
-    return await this.repo.getUserByEmail(email) ?? null;
+    const production=process.env.VERCEL_ENV==="production"||process.env.NODE_ENV==="production";
+    if(production&&process.env.ENABLE_DEV_AUTH==="true")throw new AppError("CONFIGURATION_ERROR","Development authentication is disabled in production.");
+    let email:string|undefined;
+    if(!production&&process.env.ENABLE_DEV_AUTH==="true")email=String(req.headers["x-dev-user"]??process.env.DEV_AUTH_EMAIL??"").trim().toLowerCase()||undefined;
+    else email=(await this.provider.authenticate(req))?.email.trim().toLowerCase();
+    if(!email)return null;
+    const user=await this.repo.getUserByEmail(email);
+    if(!user)throw new AppError("FORBIDDEN","Authenticated identity is not registered.");
+    if(!user.isActive)throw new AppError("INACTIVE_USER","User account is inactive.");
+    return user;
   }
 
   async requireUser(req: RequestLike): Promise<User> {
     const user = await this.getCurrentUser(req);
     if (!user) throw new AppError("UNAUTHORIZED", "Authentication required.");
-    if (!user.isActive) throw new AppError("INACTIVE_USER", "User account is inactive.");
     return user;
   }
 

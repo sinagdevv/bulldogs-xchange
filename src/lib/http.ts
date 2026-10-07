@@ -18,3 +18,13 @@ export function secure(res: ResponseLike): void {
   res.setHeader("Cache-Control", "no-store");
 }
 
+export function cors(req:RequestLike,res:ResponseLike):void{
+  const value=req.headers.origin,origin=Array.isArray(value)?value[0]:value;
+  if(!origin)return;
+  const allowed=process.env.FRONTEND_ORIGIN;
+  if(!allowed||origin!==allowed)throw new AppError("FORBIDDEN","Origin is not allowed.");
+  res.setHeader("Access-Control-Allow-Origin",allowed);
+  res.setHeader("Access-Control-Allow-Methods","GET,POST,PUT,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers","Authorization,Content-Type,Idempotency-Key");
+  res.setHeader("Vary","Origin");
+}
