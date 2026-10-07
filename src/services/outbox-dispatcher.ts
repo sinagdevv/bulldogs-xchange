@@ -38,15 +38,11 @@ OUTPUT INSERTED.AutomationEventId,INSERTED.EventId,INSERTED.EventType,INSERTED.A
       const items=await this.db.query<Row>("SELECT CONCAT(p.ProductName,N' - ',v.VariantName) Name,ri.Quantity FROM dbo.ReservationItems ri JOIN dbo.ProductVariants v ON v.ProductVariantId=ri.ProductVariantId JOIN dbo.Products p ON p.ProductId=v.ProductId WHERE ri.ReservationId=@id ORDER BY ri.ReservationItemId",{id:Number(event.aggregateId)});
       return {eventId:event.eventId,eventType:"ReservationCreated",occurredAt,recipient,data:{reservationReference:String(row.Reference),itemSummary:items.map((item)=>`${Number(item.Quantity)}x ${String(item.Name)}`).join(", "),expiresAt:new Date(row.ExpiresAt as string|Date).toISOString(),pickupLocation:"NU Fairview Campus"}};
     }
-    const data:Record<string,unknown>={...event.payload,pickupMode:"Campus Pickup"};
-    if(row.Reference) data.reservationReference=String(row.Reference);
-    if(row.ExpiresAt) data.expiresAt=new Date(row.ExpiresAt as string|Date).toISOString();
-    if(row.QueueNumber) data.queueNumber=String(row.QueueNumber);
-    if(row.QueueTypeName) data.queueType=String(row.QueueTypeName);
-    if(row.TransactionReference) data.transactionReference=String(row.TransactionReference);
-    if(row.TotalAmount!=null) data.totalAmount=Number(row.TotalAmount);
-    const timeKey:Record<string,string>={ReservationCreated:"createdAt",ReservationCancelled:"cancelledAt",ReservationReady:"readyAt",TransactionCompleted:"completedAt"}; if(timeKey[event.eventType]) data[timeKey[event.eventType]!]=occurredAt;
-    return {eventId:event.eventId,eventType:event.eventType as NotificationEvent["eventType"],occurredAt,recipient,data};
+    if(event.eventType==="ReservationReady"&&row.Reference) return {eventId:event.eventId,eventType:"ReservationReady",occurredAt,recipient,data:{reservationReference:String(row.Reference),readyAt:occurredAt,pickupLocation:"NU Fairview Campus"}};
+    if(event.eventType==="QueueCalled"&&row.QueueNumber&&row.QueueTypeName&&row.Reference) return {eventId:event.eventId,eventType:"QueueCalled",occurredAt,recipient,data:{queueNumber:String(row.QueueNumber),queueType:String(row.QueueTypeName),reservationReference:String(row.Reference)}};
+    if(event.eventType==="TransactionCompleted"&&row.TransactionReference&&row.Reference&&row.TotalAmount!=null) return {eventId:event.eventId,eventType:"TransactionCompleted",occurredAt,recipient,data:{transactionReference:String(row.TransactionReference),reservationReference:String(row.Reference),totalAmount:Number(row.TotalAmount),completedAt:occurredAt}};
+    if(event.eventType==="ReservationCancelled"&&row.Reference) return {eventId:event.eventId,eventType:"ReservationCancelled",occurredAt,recipient,data:{reservationReference:String(row.Reference),cancelledAt:occurredAt}};
+    throw new AppError("EXTERNAL_SERVICE_ERROR","Outbox notification data was incomplete.");
   }
 
   async dispatchBatch(limit?: number) {
