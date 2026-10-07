@@ -38,8 +38,11 @@ Copy `.env.example` to ignored `.env.local` and set `SQL_SERVER`, `SQL_PORT`, `S
 - `npm run db:outbox` — additive outbox leases/retries/dead-letter fields and queue `Left` status
 
 Outbox rows are atomically claimed in bounded batches, committed before external HTTP, retried with a lease after crashes, and retained when delivered or dead-lettered. Queue `Left` means a customer voluntarily left while waiting; it does not cancel the reservation or release stock.
+
+Outbox delivery follows `Pending → Processing → Delivered`, with retryable failures returning to `Pending`. `DeadLetter` is terminal failure. `Superseded` is terminal semantic non-delivery: the event was valid when created but became semantically obsolete before delivery. Cancelling a reservation supersedes only its still-pending `ReservationCreated` event.
 - `npm run db:verify` — tables, constraints, reference counts, derived availability
 - `npm run db:smoke` — live read checks for catalog, inventory, and settings
+- `npm run db:superseded` — additive outbox supersession metadata
 
 After schema creation, the developer may remove `db_ddladmin` from `bulldogs_app`; runtime access should have only required read/write permissions.
 

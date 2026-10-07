@@ -7,7 +7,7 @@ const required = ["SQL_SERVER", "SQL_DATABASE", "SQL_USER", "SQL_PASSWORD"];
 if (required.some((key) => !process.env[key])) throw new Error(`Missing SQL configuration: ${required.filter((key) => !process.env[key]).join(", ")}`);
 const config = { server: process.env.SQL_SERVER, port: Number(process.env.SQL_PORT ?? 1433), database: process.env.SQL_DATABASE, user: process.env.SQL_USER, password: process.env.SQL_PASSWORD, options: { encrypt: process.env.SQL_ENCRYPT === "true", trustServerCertificate: process.env.SQL_TRUST_SERVER_CERTIFICATE === "true" }, pool: { min: 0, max: 10, idleTimeoutMillis: 30000 } };
 const command = process.argv[2];
-const files = { schema: "database/001_schema.sql", reference: "database/002_seed_reference_data.sql", demo: "database/003_seed_demo_data.sql", workflows: "database/004_business_workflows.sql", outbox: "database/005_outbox_dispatch.sql" };
+const files = { schema: "database/001_schema.sql", reference: "database/002_seed_reference_data.sql", demo: "database/003_seed_demo_data.sql", workflows: "database/004_business_workflows.sql", outbox: "database/005_outbox_dispatch.sql", superseded: "database/006_outbox_superseded.sql" };
 const pool = await sql.connect(config);
 try {
   if (command === "check") { const result = await pool.request().query("SELECT CAST(SERVERPROPERTY('ProductVersion') AS nvarchar(50)) AS version, DB_NAME() AS databaseName, 1 AS connected"); console.log(JSON.stringify(result.recordset[0])); }

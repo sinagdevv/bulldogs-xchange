@@ -1,4 +1,5 @@
 import { AppError } from "../lib/errors.js";
+import type { OutboxStatus } from "../domain/models.js";
 import type { SqlExecutor } from "../integrations/sql-server.js";
 import { PowerAutomateClient, type NotificationEvent } from "../integrations/power-automate-client.js";
 
@@ -74,7 +75,7 @@ OUTPUT INSERTED.AutomationEventId,INSERTED.EventId,INSERTED.EventType,INSERTED.A
     return {eventId,...result,status:result.delivered?"Delivered" as const:result.deadLetter?"DeadLetter" as const:"Pending" as const};
   }
 
-  async health(){const rows=await this.db.query<Row>("SELECT Status,COUNT(*) Count,MIN(CASE WHEN Status=N'Pending' THEN CreatedAt END) OldestPendingAt FROM dbo.AutomationOutbox GROUP BY Status"); const counts={Pending:0,Processing:0,Delivered:0,DeadLetter:0}; let oldestPendingAt:string|null=null; for(const row of rows){if(String(row.Status) in counts) counts[String(row.Status) as keyof typeof counts]=Number(row.Count); if(row.OldestPendingAt) oldestPendingAt=new Date(row.OldestPendingAt as string|Date).toISOString();} return {...counts,oldestPendingAt};}
+  async health(){const rows=await this.db.query<Row>("SELECT Status,COUNT(*) Count,MIN(CASE WHEN Status=N'Pending' THEN CreatedAt END) OldestPendingAt FROM dbo.AutomationOutbox GROUP BY Status"); const counts:Record<OutboxStatus,number>={Pending:0,Processing:0,Delivered:0,DeadLetter:0,Superseded:0}; let oldestPendingAt:string|null=null; for(const row of rows){if(String(row.Status) in counts) counts[String(row.Status) as OutboxStatus]=Number(row.Count); if(row.OldestPendingAt) oldestPendingAt=new Date(row.OldestPendingAt as string|Date).toISOString();} return {...counts,oldestPendingAt};}
   deadLetters(){return this.db.query<Row>("SELECT EventId,EventType,AggregateType,AggregateId,Attempts,CreatedAt,LastError FROM dbo.AutomationOutbox WHERE Status=N'DeadLetter' ORDER BY CreatedAt");}
   async retryDeadLetter(eventId:string){const rows=await this.db.query<Row>("UPDATE dbo.AutomationOutbox SET Status=N'Pending',Attempts=0,NextAttemptAt=SYSUTCDATETIME(),LockedAt=NULL WHERE EventId=@eventId AND Status=N'DeadLetter'; SELECT @@ROWCOUNT Updated",{eventId}); if(Number(rows[0]?.Updated)!==1) throw new AppError("NOT_FOUND","Dead-letter event not found."); return {eventId,status:"Pending"};}
 }

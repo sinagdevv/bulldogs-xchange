@@ -8,5 +8,5 @@ export interface SharePointRepository {
   getReservationItems(): Promise<ReservationItem[]>; getReservationItemsByReservationId(reservationId: string): Promise<ReservationItem[]>;
   getQueues(): Promise<QueueRecord[]>; getQueueById(id: string): Promise<QueueRecord | undefined>; getQueuesByCustomerEmail(email: string): Promise<QueueRecord[]>;
   getTransactions(): Promise<Transaction[]>; getTransactionById(id: string): Promise<Transaction | undefined>; getTransactionItems(): Promise<TransactionItem[]>;
-  getInventoryMovements(): Promise<InventoryMovement[]>; getNotifications(recipientEmail?: string): Promise<Notification[]>; getAuditLogs(): Promise<AuditLog[]>; getSystemSettings(): Promise<SystemSetting[]>;
+  getInventoryMovements(): Promise<InventoryMovement[]>; getNotifications(recipientEmail?: string): Promise<Notification[]>; markNotificationRead(id: string, recipientEmail: string): Promise<boolean>; markAllNotificationsRead(recipientEmail: string): Promise<number>; getAuditLogs(): Promise<AuditLog[]>; getSystemSettings(): Promise<SystemSetting[]>;
 }

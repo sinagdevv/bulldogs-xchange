@@ -22,6 +22,8 @@ export class MockSharePointRepository implements SharePointRepository {
   async getQueues() { return this.queues; } async getQueueById(id: string) { return this.queues.find((x) => x.id === id); } async getQueuesByCustomerEmail(email: string) { return this.queues.filter((x) => x.customerEmail.toLowerCase() === email.toLowerCase()); }
   async getTransactions() { return this.transactions; } async getTransactionById(id: string) { return this.transactions.find((x) => x.id === id); } async getTransactionItems() { return this.transactionItems; }
   async getInventoryMovements() { return this.movements; } async getNotifications(email?: string) { return email ? this.notifications.filter((x) => x.recipientEmail.toLowerCase() === email.toLowerCase()) : this.notifications; }
+  async markNotificationRead(id: string, email: string) { const item=this.notifications.find((x)=>x.id===id&&x.recipientEmail.toLowerCase()===email.toLowerCase()); if(!item)return false; item.isRead=true; return true; }
+  async markAllNotificationsRead(email: string) { const items=this.notifications.filter((x)=>x.recipientEmail.toLowerCase()===email.toLowerCase()&&!x.isRead); items.forEach((x)=>x.isRead=true); return items.length; }
   async getAuditLogs() { return this.auditLogs; } async getSystemSettings() { return this.settings; }
 }
 export const createMockRepository = () => new MockSharePointRepository();

@@ -17,6 +17,7 @@
     "db:verify": "node scripts/db.mjs verify",
     "db:smoke": "node scripts/db.mjs smoke",
     "db:outbox": "node scripts/db.mjs outbox",
+    "db:superseded": "node scripts/db.mjs superseded",
     "outbox:dispatch": "npm run build --silent && node --env-file=.env.local dist/src/cli/outbox-dispatch.js",
     "outbox:dispatch-one": "npm run build --silent && node --env-file=.env.local dist/src/cli/outbox-dispatch-one.js",
     "test:sql:workflows": "node --env-file=.env.local scripts/workflow-smoke.mjs",

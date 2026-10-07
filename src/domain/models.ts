@@ -3,6 +3,7 @@ export type ReservationStatus = "Pending" | "Confirmed" | "Preparing" | "Ready f
 export type QueueType = "Express" | "Regular";
 export type QueueStatus = "Waiting" | "Serving" | "Skipped" | "Completed" | "Left";
 export type MovementType = "Reserve" | "Release" | "Sale" | "Adjust" | "Restock";
+export type OutboxStatus = "Pending" | "Processing" | "Delivered" | "DeadLetter" | "Superseded";
 
 export interface Category { id: string; title: string; isActive: boolean }
 export interface Product { id: string; title: string; categoryId: string; sku: string; description: string; price: number; imageUrl?: string; isFeatured: boolean; isActive: boolean }
