@@ -1,7 +1,7 @@
 export type Role = "Customer" | "Staff" | "Admin";
 export type ReservationStatus = "Pending" | "Confirmed" | "Preparing" | "Ready for Pickup" | "Completed" | "Cancelled" | "Expired";
 export type QueueType = "Express" | "Regular";
-export type QueueStatus = "Waiting" | "Serving" | "Skipped" | "Completed";
+export type QueueStatus = "Waiting" | "Serving" | "Skipped" | "Completed" | "Left";
 export type MovementType = "Reserve" | "Release" | "Sale" | "Adjust" | "Restock";
 
 export interface Category { id: string; title: string; isActive: boolean }

@@ -35,6 +35,9 @@ Copy `.env.example` to ignored `.env.local` and set `SQL_SERVER`, `SQL_PORT`, `S
 - `npm run db:seed:reference` — idempotent reference data
 - `npm run db:seed:demo` — optional demo records, no passwords
 - `npm run db:workflows` — additive idempotency, outbox, and workflow constraints
+- `npm run db:outbox` — additive outbox leases/retries/dead-letter fields and queue `Left` status
+
+Outbox rows are atomically claimed in bounded batches, committed before external HTTP, retried with a lease after crashes, and retained when delivered or dead-lettered. Queue `Left` means a customer voluntarily left while waiting; it does not cancel the reservation or release stock.
 - `npm run db:verify` — tables, constraints, reference counts, derived availability
 - `npm run db:smoke` — live read checks for catalog, inventory, and settings
 

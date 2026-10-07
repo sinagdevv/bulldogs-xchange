@@ -3,7 +3,7 @@ BEGIN TRANSACTION;
 MERGE dbo.Roles AS t USING (VALUES(N'Customer'),(N'Staff'),(N'Admin')) AS s(Name) ON t.RoleName=s.Name WHEN NOT MATCHED THEN INSERT(RoleName) VALUES(s.Name);
 MERGE dbo.ReservationStatuses AS t USING (VALUES(N'Pending'),(N'Confirmed'),(N'Preparing'),(N'Ready for Pickup'),(N'Completed'),(N'Cancelled'),(N'Expired')) AS s(Name) ON t.StatusName=s.Name WHEN NOT MATCHED THEN INSERT(StatusName) VALUES(s.Name);
 MERGE dbo.QueueTypes AS t USING (VALUES(N'Express'),(N'Regular')) AS s(Name) ON t.QueueTypeName=s.Name WHEN NOT MATCHED THEN INSERT(QueueTypeName) VALUES(s.Name);
-MERGE dbo.QueueStatuses AS t USING (VALUES(N'Waiting'),(N'Serving'),(N'Skipped'),(N'Completed')) AS s(Name) ON t.StatusName=s.Name WHEN NOT MATCHED THEN INSERT(StatusName) VALUES(s.Name);
+MERGE dbo.QueueStatuses AS t USING (VALUES(N'Waiting'),(N'Serving'),(N'Skipped'),(N'Completed'),(N'Left')) AS s(Name) ON t.StatusName=s.Name WHEN NOT MATCHED THEN INSERT(StatusName) VALUES(s.Name);
 MERGE dbo.InventoryMovementTypes AS t USING (VALUES(N'Reserve'),(N'Release'),(N'Sale'),(N'Adjust'),(N'Restock')) AS s(Name) ON t.MovementTypeName=s.Name WHEN NOT MATCHED THEN INSERT(MovementTypeName) VALUES(s.Name);
 MERGE dbo.TransactionStatuses AS t USING (VALUES(N'Completed'),(N'Cancelled')) AS s(Name) ON t.StatusName=s.Name WHEN NOT MATCHED THEN INSERT(StatusName) VALUES(s.Name);
 MERGE dbo.PaymentMethods AS t USING (VALUES(N'Cash'),(N'Other')) AS s(Name) ON t.PaymentMethodName=s.Name WHEN NOT MATCHED THEN INSERT(PaymentMethodName) VALUES(s.Name);

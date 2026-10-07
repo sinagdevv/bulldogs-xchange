@@ -30,6 +30,7 @@ Set `DATA_PROVIDER=powerautomate` with server-only `PA_CATALOG_URL`. `BX_AUTOMAT
 - `npm run typecheck` — TypeScript validation
 - `npm test` — focused business-rule tests
 - `npm run build` — compile the server functions
+- `npm run outbox:dispatch` — claim and dispatch one bounded outbox batch
 
 ## API
 

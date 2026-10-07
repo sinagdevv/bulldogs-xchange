@@ -3,7 +3,7 @@ import { z } from "zod";
 import { AppError } from "../lib/errors.js";
 
 const envelope = z.union([
-  z.object({ success: z.literal(true), reference: z.string().nullable().optional(), message: z.string(), data: z.unknown().optional() }),
+  z.object({ success: z.literal(true), reference: z.string().nullable().optional(), eventId: z.string().optional(), message: z.string(), data: z.unknown().optional() }),
   z.object({ success: z.literal(false), error: z.object({ code: z.string(), message: z.string() }) })
 ]);
 export type AutomationResponse<T> = { success: true; reference?: string | null; message: string; data?: T } | { success: false; error: { code: string; message: string } };

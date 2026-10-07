@@ -38,6 +38,16 @@ Single-product response: `{ "success": true, "message": "Product retrieved.", "d
 
 Items use domain field names. Availability includes `productVariantId`, `physicalQuantity`, `reservedQuantity`, derived `availableQuantity`, `reorderLevel`, and `status` (`Out of Stock`, `Low Stock`, or `Healthy`).
 
+## BX-NotifyEvent
+
+SQL business changes and in-app notifications commit first. The transactional outbox then sends supported events with at-least-once delivery; failed calls retry and eventually remain queryable as `DeadLetter`.
+
+Request: `{ "eventId": "uuid", "eventType": "ReservationCreated | ReservationCancelled | ReservationReady | QueueCalled | TransactionCompleted", "occurredAt": "ISO-8601", "recipient": { "email": "...", "name": "..." }, "data": {} }`
+
+Success: `{ "success": true, "eventId": "same uuid", "message": "Notification accepted." }`
+
+The flow should deduplicate by `eventId`. Notifications are campus-pickup-only and must not introduce shipping fields.
+
 ## Future domain flows
 
 - `BX-API-Customer`: profile, reservations, queue, notifications
