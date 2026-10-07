@@ -11,7 +11,7 @@ export class ReservationService {
   list(user: User) { return user.role === "Customer" ? this.repo.getReservationsByCustomerEmail(user.email) : this.repo.getReservations(); }
   async get(id: string, user: User) { const item = await this.repo.getReservationById(id); if (!item || (user.role === "Customer" && item.customerEmail !== user.email)) throw new AppError("NOT_FOUND", "Reservation not found."); return item; }
   async create(input: unknown, user: User) {
-    if (!isMockRepository(this.repo)) throw new AppError("CONFIGURATION_ERROR", "Production reservation writes require Power Automate.");
+    if (!isMockRepository(this.repo)) throw new AppError("CONFIGURATION_ERROR", "Reservation writes are not implemented for the selected data provider.");
     const parsed = reservationInput.safeParse(input); if (!parsed.success) throw new AppError("VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid reservation.");
     for (const requested of parsed.data.items) {
       const variant = (await this.repo.getVariants()).find((v) => v.id === requested.productVariantId); if (!variant) throw new AppError("NOT_FOUND", "Variant not found.");
@@ -25,5 +25,5 @@ export class ReservationService {
     for (const item of parsed.data.items) { const variant = this.repo.variants.find((v) => v.id === item.productVariantId)!; const product = await this.catalog.getProduct(variant.productId); this.repo.reservationItems.push({ id: `ri-${this.repo.reservationItems.length + 1}`, reservationId: id, productVariantId: item.productVariantId, quantity: item.quantity, unitPrice: product.price }); const inventory = this.repo.inventory.find((i) => i.productVariantId === item.productVariantId)!; inventory.reservedQuantity += item.quantity; }
     return reservation;
   }
-  async cancel(id: string, user: User) { if (!isMockRepository(this.repo)) throw new AppError("CONFIGURATION_ERROR", "Production reservation writes require Power Automate."); const item = await this.get(id, user); if (!["Pending", "Confirmed"].includes(item.status)) throw new AppError("INVALID_RESERVATION_STATUS", "Reservation cannot be cancelled."); item.status = "Cancelled"; item.updatedAt = new Date().toISOString(); for (const line of this.repo.reservationItems.filter((i) => i.reservationId === id)) { const stock = this.repo.inventory.find((i) => i.productVariantId === line.productVariantId); if (stock) stock.reservedQuantity -= line.quantity; } return item; }
+  async cancel(id: string, user: User) { if (!isMockRepository(this.repo)) throw new AppError("CONFIGURATION_ERROR", "Reservation writes are not implemented for the selected data provider."); const item = await this.get(id, user); if (!["Pending", "Confirmed"].includes(item.status)) throw new AppError("INVALID_RESERVATION_STATUS", "Reservation cannot be cancelled."); item.status = "Cancelled"; item.updatedAt = new Date().toISOString(); for (const line of this.repo.reservationItems.filter((i) => i.reservationId === id)) { const stock = this.repo.inventory.find((i) => i.productVariantId === line.productVariantId); if (stock) stock.reservedQuantity -= line.quantity; } return item; }
 }

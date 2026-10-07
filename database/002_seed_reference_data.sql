@@ -1,0 +1,11 @@
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+MERGE dbo.Roles AS t USING (VALUES(N'Customer'),(N'Staff'),(N'Admin')) AS s(Name) ON t.RoleName=s.Name WHEN NOT MATCHED THEN INSERT(RoleName) VALUES(s.Name);
+MERGE dbo.ReservationStatuses AS t USING (VALUES(N'Pending'),(N'Confirmed'),(N'Preparing'),(N'Ready for Pickup'),(N'Completed'),(N'Cancelled'),(N'Expired')) AS s(Name) ON t.StatusName=s.Name WHEN NOT MATCHED THEN INSERT(StatusName) VALUES(s.Name);
+MERGE dbo.QueueTypes AS t USING (VALUES(N'Express'),(N'Regular')) AS s(Name) ON t.QueueTypeName=s.Name WHEN NOT MATCHED THEN INSERT(QueueTypeName) VALUES(s.Name);
+MERGE dbo.QueueStatuses AS t USING (VALUES(N'Waiting'),(N'Serving'),(N'Skipped'),(N'Completed')) AS s(Name) ON t.StatusName=s.Name WHEN NOT MATCHED THEN INSERT(StatusName) VALUES(s.Name);
+MERGE dbo.InventoryMovementTypes AS t USING (VALUES(N'Reserve'),(N'Release'),(N'Sale'),(N'Adjust'),(N'Restock')) AS s(Name) ON t.MovementTypeName=s.Name WHEN NOT MATCHED THEN INSERT(MovementTypeName) VALUES(s.Name);
+MERGE dbo.TransactionStatuses AS t USING (VALUES(N'Completed'),(N'Cancelled')) AS s(Name) ON t.StatusName=s.Name WHEN NOT MATCHED THEN INSERT(StatusName) VALUES(s.Name);
+MERGE dbo.PaymentMethods AS t USING (VALUES(N'Cash'),(N'Other')) AS s(Name) ON t.PaymentMethodName=s.Name WHEN NOT MATCHED THEN INSERT(PaymentMethodName) VALUES(s.Name);
+MERGE dbo.SystemSettings AS t USING (VALUES(N'ReservationExpiryDays',N'7',N'Integer',N'Days before a reservation expires'),(N'LowStockDefault',N'5',N'Integer',N'Default low-stock threshold'),(N'ReferenceCounter',N'126',N'Integer',N'Next business reference counter')) AS s([Key],Value,DataType,Description) ON t.SettingKey=s.[Key] WHEN NOT MATCHED THEN INSERT(SettingKey,SettingValue,DataType,Description) VALUES(s.[Key],s.Value,s.DataType,s.Description);
+COMMIT;

@@ -8,15 +8,25 @@
     "build": "node node_modules/typescript/bin/tsc -p tsconfig.build.json",
     "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:check": "node scripts/db.mjs check",
+    "db:schema": "node scripts/db.mjs schema",
+    "db:seed:reference": "node scripts/db.mjs reference",
+    "db:seed:demo": "node scripts/db.mjs demo",
+    "db:verify": "node scripts/db.mjs verify",
+    "db:smoke": "node scripts/db.mjs smoke"
   },
   "dependencies": {
+    "mssql": "^12.7.4",
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@types/mssql": "^12.3.0",
     "@types/node": "^24.10.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.4"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  }
 }
