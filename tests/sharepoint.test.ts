@@ -6,6 +6,7 @@ import { ProductionSharePointRepository } from "../src/repositories/production-s
 import { ReservationService } from "../src/services/reservation-service.js";
 import { CatalogService } from "../src/services/catalog-service.js";
 import { MockSharePointRepository } from "../src/repositories/mock-repository.js";
+import { PowerAutomateRepository } from "../src/repositories/power-automate-repository.js";
 
 const tokens = { getAccessToken: async () => "super-secret-token" };
 afterEach(() => { delete process.env.SHAREPOINT_SITE_ID; delete process.env.SHAREPOINT_LIST_PRODUCTS; delete process.env.SHAREPOINT_LIST_USERS; delete process.env.DATA_PROVIDER; process.env.NODE_ENV = "test"; vi.restoreAllMocks(); });
@@ -19,6 +20,6 @@ describe("SharePoint integration", () => {
   it.each([[401, "UNAUTHORIZED"], [403, "FORBIDDEN"]])("maps %i responses", async (status, code) => { await expect(new GraphClient(tokens, async () => new Response("", { status }) as never, 100, () => {}).get("/x", "test")).rejects.toMatchObject({ code }); });
   it("retries 429 and omits secrets from logs", async () => { const logs: Record<string, unknown>[] = []; const fetcher = vi.fn().mockResolvedValueOnce(new Response("", { status: 429 })).mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 })); await new GraphClient(tokens, fetcher, 100, (entry) => logs.push(entry)).get("/x", "test"); expect(fetcher).toHaveBeenCalledTimes(2); expect(JSON.stringify(logs)).not.toContain("super-secret-token"); });
   it("turns timeouts into a safe external error", async () => { const fetcher = vi.fn(async () => { throw new DOMException("timed out", "AbortError"); }); await expect(new GraphClient(tokens, fetcher as typeof fetch, 1, () => {}).get("/x", "test")).rejects.toMatchObject({ code: "EXTERNAL_SERVICE_ERROR" }); });
-  it("selects providers explicitly and blocks production mock", () => { process.env.DATA_PROVIDER = "mock"; process.env.NODE_ENV = "test"; expect(createRepository()).toBeInstanceOf(MockSharePointRepository); process.env.NODE_ENV = "production"; expect(() => createRepository()).toThrow("disabled in production"); });
+  it("selects providers explicitly and blocks production mock", () => { process.env.NODE_ENV = "test"; process.env.DATA_PROVIDER = "mock"; expect(createRepository()).toBeInstanceOf(MockSharePointRepository); process.env.DATA_PROVIDER = "sharepoint"; expect(createRepository()).toBeInstanceOf(ProductionSharePointRepository); process.env.DATA_PROVIDER = "powerautomate"; expect(createRepository()).toBeInstanceOf(PowerAutomateRepository); process.env.DATA_PROVIDER = "unknown"; expect(() => createRepository()).toThrow("DATA_PROVIDER"); process.env.DATA_PROVIDER = "mock"; process.env.NODE_ENV = "production"; expect(() => createRepository()).toThrow("disabled in production"); });
   it("keeps customer reservations isolated", async () => { const repo = new MockSharePointRepository(); repo.reservations.push({ ...repo.reservations[0]!, id: "res-2", customerEmail: "other@example.test" }); const service = new ReservationService(repo, new CatalogService(repo)); expect(await service.list(repo.users[0]!)).toHaveLength(1); });
 });

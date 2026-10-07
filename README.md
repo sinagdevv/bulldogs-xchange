@@ -6,7 +6,7 @@ Backend foundation for an on-campus merchandise reservation and pickup system. I
 
 `api` → validation/authorization → services → repository contracts → SharePoint, Power Automate, or local mock adapters.
 
-SharePoint reads use Microsoft Graph with application authentication; the in-memory adapter remains available for development. Services depend on the same asynchronous repository contract. Development authentication is opt-in and refuses to run when `NODE_ENV` or `VERCEL_ENV` is `production`.
+Production reads currently use Power Automate HTTP flows; Microsoft Graph remains available for future Entra access, and the in-memory adapter remains available for development. All providers implement the same asynchronous repository contract.
 
 ## Setup
 
@@ -21,6 +21,8 @@ Set `ENABLE_DEV_AUTH=true` and `DEV_AUTH_EMAIL=customer@example.test` only for l
 Set `DATA_PROVIDER=sharepoint` for real reads and configure the site, tenant, client ID, and client secret from `.env.example`. The Entra application needs `Sites.Selected` access granted to the site (or an appropriate broader Graph application permission). Optional list IDs avoid name resolution. Tokens and list IDs are cached only in memory. Production never falls back to mock mode.
 
 The production SharePoint adapter is read-only. Business writes remain mock-only until their existing Power Automate workflows are connected.
+
+Set `DATA_PROVIDER=powerautomate` with server-only `PA_CATALOG_URL`. `BX_AUTOMATION_SECRET`, when configured, is sent as `x-bx-api-key`. Customer, staff, and admin read-flow contracts are reserved but not connected yet. See [Power Automate contracts](docs/power-automate-contracts.md).
 
 ## Scripts
 

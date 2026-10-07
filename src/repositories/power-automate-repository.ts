@@ -1,0 +1,32 @@
+import { z } from "zod";
+import type { AuditLog, Category, Inventory, InventoryMovement, Notification, Product, ProductVariant, QueueRecord, Reservation, ReservationItem, SystemSetting, Transaction, TransactionItem, User } from "../domain/models.js";
+import { AppError } from "../lib/errors.js";
+import { yesNo } from "../integrations/sharepoint-fields.js";
+import { PowerAutomateHttpClient } from "../integrations/power-automate-http-client.js";
+import type { SharePointRepository } from "./repository.js";
+
+export const catalogRequestSchema = z.object({ action: z.enum(["categories", "products", "product", "variants", "availability"]), productId: z.union([z.string(), z.number()]).nullish(), search: z.string().max(200).nullish(), categoryId: z.union([z.string(), z.number()]).nullish(), featured: z.boolean().nullish(), active: z.boolean().nullish(), sort: z.enum(["title", "price", "-price"]).nullish() }).superRefine((value, context) => { if (value.action === "product" && value.productId == null) context.addIssue({ code: "custom", path: ["productId"], message: "productId is required for product." }); });
+const booleanValue = z.preprocess(yesNo, z.boolean()), numeric = z.coerce.number();
+const categorySchema = z.object({ id: z.union([z.string(), z.number()]).transform(String), name: z.string(), isActive: booleanValue });
+const productSchema = z.object({ id: z.union([z.string(), z.number()]).transform(String), title: z.string(), categoryId: z.union([z.string(), z.number()]).transform(String), sku: z.string(), description: z.string().default(""), price: numeric, imageUrl: z.string().nullable().optional().transform((value) => value ?? undefined), isFeatured: booleanValue, isActive: booleanValue });
+const variantSchema = z.object({ id: z.union([z.string(), z.number()]).transform(String), productId: z.union([z.string(), z.number()]).transform(String), name: z.string(), variantSku: z.string(), isActive: booleanValue });
+const availabilitySchema = z.object({ productVariantId: z.union([z.string(), z.number()]).transform(String), physicalQuantity: numeric, reservedQuantity: numeric, availableQuantity: numeric.optional(), reorderLevel: numeric, status: z.string().optional() });
+
+export class PowerAutomateRepository implements SharePointRepository {
+  constructor(private http = new PowerAutomateHttpClient()) {}
+  private async catalog<T>(request: z.input<typeof catalogRequestSchema>, schema: z.ZodType<T>, single = false): Promise<T[] | T | undefined> { const body = catalogRequestSchema.parse(request); const response = await this.http.request("catalog", process.env.PA_CATALOG_URL, body); if (!response.success) throw new AppError("EXTERNAL_SERVICE_ERROR", response.error.message); const data = z.object({ items: z.array(schema).optional(), item: schema.nullish() }).safeParse(response.data); if (!data.success) throw new AppError("EXTERNAL_SERVICE_ERROR", "Power Automate catalog response was invalid."); return single ? data.data.item ?? undefined : data.data.items ?? []; }
+  async getCategories(): Promise<Category[]> { return (await this.catalog({ action: "categories" }, categorySchema) as z.output<typeof categorySchema>[]).map((x) => ({ id: x.id, title: x.name, isActive: x.isActive })); }
+  async getProducts(): Promise<Product[]> { return await this.catalog({ action: "products" }, productSchema) as Product[]; }
+  async getProductById(id: string): Promise<Product | undefined> { return await this.catalog({ action: "product", productId: id }, productSchema, true) as Product | undefined; }
+  async getVariants(): Promise<ProductVariant[]> { return await this.catalog({ action: "variants" }, variantSchema) as ProductVariant[]; }
+  async getVariantsByProductId(id: string): Promise<ProductVariant[]> { return await this.catalog({ action: "variants", productId: id }, variantSchema) as ProductVariant[]; }
+  private async availability(productId?: string): Promise<Inventory[]> { const rows = await this.catalog({ action: "availability", productId }, availabilitySchema) as z.output<typeof availabilitySchema>[]; return rows.map(({ productVariantId, physicalQuantity, reservedQuantity, reorderLevel }) => ({ productVariantId, physicalQuantity, reservedQuantity, reorderLevel })); }
+  getInventory() { return this.availability(); } async getInventoryByVariantId(id: string) { return (await this.availability()).find((x) => x.productVariantId === id); } getInventoryByProductId(id: string) { return this.availability(id); }
+  private unavailable(group: string): never { throw new AppError("CONFIGURATION_ERROR", `${group} Power Automate read flow is not available yet.`); }
+  async getUsers(): Promise<User[]> { return this.unavailable("admin"); } async getUserByEmail(_v: string): Promise<User | undefined> { return this.unavailable("customer"); } async getUserBySchoolId(_v: string): Promise<User | undefined> { return this.unavailable("customer"); }
+  async getReservations(): Promise<Reservation[]> { return this.unavailable("customer"); } async getReservationById(_v: string): Promise<Reservation | undefined> { return this.unavailable("customer"); } async getReservationsByCustomerEmail(_v: string): Promise<Reservation[]> { return this.unavailable("customer"); }
+  async getReservationItems(): Promise<ReservationItem[]> { return this.unavailable("customer"); } async getReservationItemsByReservationId(_v: string): Promise<ReservationItem[]> { return this.unavailable("customer"); }
+  async getQueues(): Promise<QueueRecord[]> { return this.unavailable("staff"); } async getQueueById(_v: string): Promise<QueueRecord | undefined> { return this.unavailable("staff"); } async getQueuesByCustomerEmail(_v: string): Promise<QueueRecord[]> { return this.unavailable("customer"); }
+  async getTransactions(): Promise<Transaction[]> { return this.unavailable("admin"); } async getTransactionById(_v: string): Promise<Transaction | undefined> { return this.unavailable("admin"); } async getTransactionItems(): Promise<TransactionItem[]> { return this.unavailable("admin"); }
+  async getInventoryMovements(): Promise<InventoryMovement[]> { return this.unavailable("staff"); } async getNotifications(_v?: string): Promise<Notification[]> { return this.unavailable("customer"); } async getAuditLogs(): Promise<AuditLog[]> { return this.unavailable("admin"); } async getSystemSettings(): Promise<SystemSetting[]> { return this.unavailable("admin"); }
+}

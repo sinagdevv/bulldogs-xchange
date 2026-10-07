@@ -17,6 +17,6 @@ export class CatalogService {
   }
   async getProduct(id: string) { const product = await this.repo.getProductById(id); if (!product) throw new AppError("NOT_FOUND", "Product not found."); return product; }
   async getVariants(productId: string) { await this.getProduct(productId); return this.repo.getVariantsByProductId(productId); }
-  async getAvailability(productId: string) { return Promise.all((await this.getVariants(productId)).map(async (variant) => ({ productVariantId: variant.id, availableQuantity: await this.available(variant.id) }))); }
+  async getAvailability(productId: string) { await this.getProduct(productId); return (await this.repo.getInventoryByProductId(productId)).map((item) => { const availableQuantity = item.physicalQuantity - item.reservedQuantity; return { ...item, availableQuantity, status: availableQuantity <= 0 ? "Out of Stock" as const : availableQuantity <= item.reorderLevel ? "Low Stock" as const : "Healthy" as const }; }); }
   async available(variantId: string) { const item = await this.repo.getInventoryByVariantId(variantId); return item ? item.physicalQuantity - item.reservedQuantity : 0; }
 }
