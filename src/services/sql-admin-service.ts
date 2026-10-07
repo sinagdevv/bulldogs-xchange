@@ -5,11 +5,11 @@ import { AppError } from "../lib/errors.js";
 
 const name=z.string().trim().min(1).max(200), sku=z.string().trim().min(1).max(100), positiveId=z.coerce.number().int().positive();
 export const createProductSchema=z.object({name,categoryId:positiveId,sku,price:z.coerce.number().min(0).max(9999999999.99),description:z.string().trim().max(10000).nullable().optional(),imageUrl:z.string().trim().url().max(1000).nullable().optional(),isFeatured:z.boolean().default(false),isActive:z.boolean().default(true)}).strict();
-export const updateProductSchema=createProductSchema.partial().refine(v=>Object.keys(v).length>0,"At least one field is required.");
+export const updateProductSchema=createProductSchema.partial().extend({isFeatured:z.boolean().optional(),isActive:z.boolean().optional()}).refine(v=>Object.keys(v).length>0,"At least one field is required.");
 export const createCategorySchema=z.object({name:name.max(150),isActive:z.boolean().default(true)}).strict();
-export const updateCategorySchema=createCategorySchema.partial().refine(v=>Object.keys(v).length>0,"At least one field is required.");
+export const updateCategorySchema=createCategorySchema.partial().extend({isActive:z.boolean().optional()}).refine(v=>Object.keys(v).length>0,"At least one field is required.");
 export const createVariantSchema=z.object({productId:positiveId,name:name.max(100),variantSku:sku,isActive:z.boolean().default(true)}).strict();
-export const updateVariantSchema=createVariantSchema.partial().refine(v=>Object.keys(v).length>0,"At least one field is required.");
+export const updateVariantSchema=createVariantSchema.partial().extend({isActive:z.boolean().optional()}).refine(v=>Object.keys(v).length>0,"At least one field is required.");
 export const activeSchema=z.object({isActive:z.boolean()}).strict(), roleSchema=z.object({role:z.enum(["Customer","Staff","Admin"])}).strict();
 type Row=Record<string,unknown>;
 const parse=<T>(schema:z.ZodType<T>,input:unknown):T=>{const result=schema.safeParse(input);if(!result.success)throw new AppError("VALIDATION_ERROR",result.error.issues[0]?.message??"Invalid request.");return result.data;};
