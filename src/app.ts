@@ -12,11 +12,13 @@ import { CatalogService } from "./services/catalog-service.js";
 import { QueueService } from "./services/queue-service.js";
 import { ReservationService } from "./services/reservation-service.js";
 import { SqlBusinessService } from "./services/sql-business-service.js";
+import { SqlAdminService } from "./services/sql-admin-service.js";
 import { OutboxDispatcher } from "./services/outbox-dispatcher.js";
 
 export const repository = createRepository();
 const auth = new AuthService(repository), catalog = new CatalogService(repository), reservations = new ReservationService(repository, catalog), queue = new QueueService(repository), analytics = new AnalyticsService(repository);
 const sqlBusiness = repository instanceof SqlServerRepository && repository.db instanceof SqlServerConnectionManager ? new SqlBusinessService(repository.db) : null;
+const sqlAdmin = repository instanceof SqlServerRepository && repository.db instanceof SqlServerConnectionManager ? new SqlAdminService(repository.db) : null;
 const outbox = repository instanceof SqlServerRepository && repository.db instanceof SqlServerConnectionManager ? new OutboxDispatcher(repository.db) : null;
 const bool = (value: unknown) => value === undefined ? undefined : String(value) === "true";
 const notificationId = z.string().trim().min(1).max(100);
@@ -63,7 +65,7 @@ export async function handle(req: RequestLike, res: ResponseLike): Promise<void>
     if (route.startsWith("staff/") && method === "POST") { await requireStaffOrAdmin(auth, req); throw new AppError("NOT_FOUND","Route not found."); }
     if (route.startsWith("admin/analytics/") && method === "GET") { await requireAdmin(auth, req); const key = parts[2], data = key === "summary" ? await analytics.getSummary() : key === "sales" ? await analytics.getSalesTrend() : key === "reservations" ? await analytics.getReservationTrend() : key === "products" ? await analytics.getProductDemand() : key === "inventory" ? await analytics.getInventoryHealth() : key === "queue" ? await analytics.getQueuePerformance() : null; if (data === null) throw new AppError("NOT_FOUND", "Route not found."); return void res.status(200).json(ok(data)); }
     if (route.startsWith("admin/") && method === "GET") { await requireAdmin(auth, req); const data=await adminData(route); if(data===undefined) throw new AppError("NOT_FOUND","Route not found."); return void res.status(200).json(ok(data)); }
-    if (route.startsWith("admin/") && ["POST", "PUT"].includes(method)) { await requireAdmin(auth, req); if(knownAdminMutation(method,parts)) throw new AppError("NOT_IMPLEMENTED","This operation is not implemented."); throw new AppError("NOT_FOUND","Route not found."); }
+    if (route.startsWith("admin/") && ["POST", "PUT"].includes(method)) { const actor=await requireAdmin(auth,req); if(!knownAdminMutation(method,parts)) throw new AppError("NOT_FOUND","Route not found."); if(!sqlAdmin) throw new AppError("CONFIGURATION_ERROR","SQL Admin operations are unavailable."); let data:unknown; if(method==="POST"&&parts[1]==="products") data=await sqlAdmin.createProduct(req.body,actor); else if(method==="POST"&&parts[1]==="categories") data=await sqlAdmin.createCategory(req.body,actor); else if(method==="POST"&&parts[1]==="variants") data=await sqlAdmin.createVariant(req.body,actor); else if(method==="PUT"&&parts[1]==="products"&&parts[3]==="active") data=await sqlAdmin.setProductActive(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="categories"&&parts[3]==="active") data=await sqlAdmin.setCategoryActive(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="variants"&&parts[3]==="active") data=await sqlAdmin.setVariantActive(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="products") data=await sqlAdmin.updateProduct(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="categories") data=await sqlAdmin.updateCategory(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="variants") data=await sqlAdmin.updateVariant(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="users") data=await sqlAdmin.changeUserRole(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="settings") data=await sqlAdmin.updateSetting(parts[2]!,req.body,actor); else throw new AppError("NOT_FOUND","Route not found."); return void res.status(method==="POST"?201:200).json(ok(data,"Admin operation completed.")); }
     throw new AppError("NOT_FOUND", "Route not found.");
   } catch (error) { sendError(res, error); }
 }
