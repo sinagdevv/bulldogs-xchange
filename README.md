@@ -4,9 +4,9 @@ Backend foundation for an on-campus merchandise reservation and pickup system. I
 
 ## Architecture
 
-`api` → validation/authorization → services → repository contracts → SharePoint, Power Automate, or local mock adapters.
+`Web/PWA` → `Vercel REST API` → `Microsoft SQL Server` → `transactional outbox` → `Power Automate` → `Outlook`
 
-Production reads currently use Power Automate HTTP flows; Microsoft Graph remains available for future Entra access, and the in-memory adapter remains available for development. All providers implement the same asynchronous repository contract.
+SQL Server is the primary system of record for operational state. Power Automate handles notification and scheduled-automation side effects; browser-facing code must never call it directly. SharePoint is not the primary operational database, and Excel is reporting/export only. All fulfillment is campus pickup; shipping and delivery workflows are intentionally absent.
 
 ## Setup
 
@@ -18,11 +18,9 @@ npm run dev
 
 Set `ENABLE_DEV_AUTH=true` and `DEV_AUTH_EMAIL=customer@example.test` only for local testing. You may also send `x-dev-user` with one of the fake accounts. Never enable this in production.
 
-Set `DATA_PROVIDER=sharepoint` for real reads and configure the site, tenant, client ID, and client secret from `.env.example`. The Entra application needs `Sites.Selected` access granted to the site (or an appropriate broader Graph application permission). Optional list IDs avoid name resolution. Tokens and list IDs are cached only in memory. Production never falls back to mock mode.
+Production defaults to `DATA_PROVIDER=sqlserver`. SharePoint, Power Automate repository, and in-memory providers remain legacy/development adapters; production never falls back to mock mode.
 
-The production SharePoint adapter is read-only. Business writes remain mock-only until their existing Power Automate workflows are connected.
-
-Set `DATA_PROVIDER=powerautomate` with server-only `PA_CATALOG_URL`. `BX_AUTOMATION_SECRET`, when configured, is sent as `x-bx-api-key`. Customer, staff, and admin read-flow contracts are reserved but not connected yet. See [Power Automate contracts](docs/power-automate-contracts.md).
+The transactional outbox has validated real Outlook delivery through `BX-NotifyEvent` for `ReservationCreated`, `ReservationReady`, `QueueCalled`, `TransactionCompleted`, and `ReservationCancelled`. `PA_NOTIFY_EVENT_URL` and `BX_AUTOMATION_SECRET` are server-only. See [Power Automate contracts](docs/power-automate-contracts.md).
 
 ## Scripts
 
@@ -42,4 +40,4 @@ Configure server-only SharePoint and Power Automate values from `.env.example` i
 
 ## Deferred
 
-Production identity and integrations, CSV/Excel/PDF/email exports, scheduled reports, chatbot, and final frontend.
+Production identity, CSV/Excel/PDF exports, scheduled reports, chatbot, and final frontend.
