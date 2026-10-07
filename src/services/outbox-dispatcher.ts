@@ -32,16 +32,21 @@ OUTPUT INSERTED.AutomationEventId,INSERTED.EventId,INSERTED.EventType,INSERTED.A
     else if(event.aggregateType==="QueueEntry") row=(await this.db.query<Row>("SELECT q.QueueNumber,r.Reference,qt.QueueTypeName,u.Email,u.FullName FROM dbo.QueueEntries q JOIN dbo.Reservations r ON r.ReservationId=q.ReservationId JOIN dbo.QueueTypes qt ON qt.QueueTypeId=q.QueueTypeId JOIN dbo.Users u ON u.UserId=q.CustomerId WHERE q.QueueEntryId=@id",{id:Number(event.aggregateId)}))[0];
     else if(event.aggregateType==="Transaction") row=(await this.db.query<Row>("SELECT t.Reference TransactionReference,r.Reference,t.TotalAmount,u.Email,u.FullName FROM dbo.Transactions t JOIN dbo.Reservations r ON r.ReservationId=t.ReservationId JOIN dbo.Users u ON u.UserId=t.CustomerId WHERE t.TransactionId=@id",{id:Number(event.aggregateId)}))[0];
     if(!row?.Email) throw new AppError("EXTERNAL_SERVICE_ERROR","Outbox event recipient was not found.");
-    const occurredAt=event.createdAt.toISOString(), data:Record<string,unknown>={...event.payload,pickupMode:"Campus Pickup"};
+    const occurredAt=event.createdAt.toISOString(), recipient={email:String(row.Email),name:String(row.FullName??"")};
+    if(event.eventType==="ReservationCreated"){
+      if(!row.Reference||!row.ExpiresAt) throw new AppError("EXTERNAL_SERVICE_ERROR","Reservation notification data was incomplete.");
+      const items=await this.db.query<Row>("SELECT CONCAT(p.ProductName,N' - ',v.VariantName) Name,ri.Quantity FROM dbo.ReservationItems ri JOIN dbo.ProductVariants v ON v.ProductVariantId=ri.ProductVariantId JOIN dbo.Products p ON p.ProductId=v.ProductId WHERE ri.ReservationId=@id ORDER BY ri.ReservationItemId",{id:Number(event.aggregateId)});
+      return {eventId:event.eventId,eventType:"ReservationCreated",occurredAt,recipient,data:{reservationReference:String(row.Reference),itemSummary:items.map((item)=>`${Number(item.Quantity)}x ${String(item.Name)}`).join(", "),expiresAt:new Date(row.ExpiresAt as string|Date).toISOString(),pickupLocation:"NU Fairview Campus"}};
+    }
+    const data:Record<string,unknown>={...event.payload,pickupMode:"Campus Pickup"};
     if(row.Reference) data.reservationReference=String(row.Reference);
-    if(event.eventType==="ReservationCreated"){const items=await this.db.query<Row>("SELECT p.ProductName,v.VariantName,ri.Quantity FROM dbo.ReservationItems ri JOIN dbo.ProductVariants v ON v.ProductVariantId=ri.ProductVariantId JOIN dbo.Products p ON p.ProductId=v.ProductId WHERE ri.ReservationId=@id ORDER BY ri.ReservationItemId",{id:Number(event.aggregateId)}); data.itemSummary=items.map((item)=>({name:`${String(item.ProductName)} - ${String(item.VariantName)}`,quantity:Number(item.Quantity)}));}
     if(row.ExpiresAt) data.expiresAt=new Date(row.ExpiresAt as string|Date).toISOString();
     if(row.QueueNumber) data.queueNumber=String(row.QueueNumber);
     if(row.QueueTypeName) data.queueType=String(row.QueueTypeName);
     if(row.TransactionReference) data.transactionReference=String(row.TransactionReference);
     if(row.TotalAmount!=null) data.totalAmount=Number(row.TotalAmount);
     const timeKey:Record<string,string>={ReservationCreated:"createdAt",ReservationCancelled:"cancelledAt",ReservationReady:"readyAt",TransactionCompleted:"completedAt"}; if(timeKey[event.eventType]) data[timeKey[event.eventType]!]=occurredAt;
-    return {eventId:event.eventId,eventType:event.eventType as NotificationEvent["eventType"],occurredAt,recipient:{email:String(row.Email),name:String(row.FullName??"")},data};
+    return {eventId:event.eventId,eventType:event.eventType as NotificationEvent["eventType"],occurredAt,recipient,data};
   }
 
   async dispatchBatch(limit?: number) {
