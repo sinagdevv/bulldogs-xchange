@@ -8,7 +8,7 @@ export interface Category { id: string; title: string; isActive: boolean }
 export interface Product { id: string; title: string; categoryId: string; sku: string; description: string; price: number; imageUrl?: string; isFeatured: boolean; isActive: boolean }
 export interface ProductVariant { id: string; productId: string; name: string; variantSku: string; isActive: boolean }
 export interface Inventory { productVariantId: string; physicalQuantity: number; reservedQuantity: number; reorderLevel: number }
-export interface User { id: string; email: string; displayName: string; role: Role; isActive: boolean }
+export interface User { id: string; email: string; displayName: string; schoolId?: string; department?: string; customerType?: string; role: Role; isActive: boolean }
 export interface Reservation { id: string; reference: string; customerEmail: string; status: ReservationStatus; expiresAt: string; createdAt: string; updatedAt: string }
 export interface ReservationItem { id: string; reservationId: string; productVariantId: string; quantity: number; unitPrice: number }
 export interface QueueRecord { id: string; queueNumber: string; customerEmail: string; reservationId?: string; queueType: QueueType; status: QueueStatus; queueDate: string }
@@ -23,4 +23,3 @@ export type ReportType = "EXECUTIVE_SUMMARY" | "SALES" | "TRANSACTIONS" | "RESER
 export interface ReportRequest { type: ReportType; from?: string; to?: string; format: "json" | "csv" | "xlsx" | "pdf" }
 export interface ReportMetadata { generatedAt: string; generatedBy: string; recordCount: number }
 export interface ReportResult { metadata: ReportMetadata; data: unknown[] }
-

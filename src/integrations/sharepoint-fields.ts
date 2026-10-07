@@ -1,7 +1,7 @@
-// Raw SharePoint internal names belong only in this integration boundary.
-export const sharePointFields = {
-  category: { id: "ID", title: "Title", isActive: "IsActive" },
-  product: { id: "ID", title: "Title", categoryId: "CategoryId", sku: "SKU" },
-  variant: { id: "ID", productId: "ProductId", name: "Title", variantSku: "VariantSKU" }
-} as const;
-
+export const listNames = { categories: "Categories", products: "Products", variants: "Product Variants", inventory: "Inventory", users: "Users", reservations: "Reservations", reservationItems: "Reservation Items", queues: "Queues", transactions: "Transactions", transactionItems: "Transaction Items", movements: "Inventory Movements", notifications: "Notifications", auditLogs: "Audit Logs", settings: "System Settings" } as const;
+export type ListKey = keyof typeof listNames;
+export const listEnvironment: Record<ListKey, string> = { categories: "SHAREPOINT_LIST_CATEGORIES", products: "SHAREPOINT_LIST_PRODUCTS", variants: "SHAREPOINT_LIST_PRODUCT_VARIANTS", inventory: "SHAREPOINT_LIST_INVENTORY", users: "SHAREPOINT_LIST_USERS", reservations: "SHAREPOINT_LIST_RESERVATIONS", reservationItems: "SHAREPOINT_LIST_RESERVATION_ITEMS", queues: "SHAREPOINT_LIST_QUEUES", transactions: "SHAREPOINT_LIST_TRANSACTIONS", transactionItems: "SHAREPOINT_LIST_TRANSACTION_ITEMS", movements: "SHAREPOINT_LIST_INVENTORY_MOVEMENTS", notifications: "SHAREPOINT_LIST_NOTIFICATIONS", auditLogs: "SHAREPOINT_LIST_AUDIT_LOGS", settings: "SHAREPOINT_LIST_SYSTEM_SETTINGS" };
+export const yesNo = (value: unknown): boolean => value === true || value === 1 || (typeof value === "string" && ["yes", "true", "1"].includes(value.toLowerCase()));
+export const numberValue = (value: unknown): number => { const number = Number(value ?? 0); return Number.isFinite(number) ? number : 0; };
+export const isoDate = (value: unknown): string => { const date = new Date(String(value ?? "")); return Number.isNaN(date.valueOf()) ? new Date(0).toISOString() : date.toISOString(); };
+export const escapeFilter = (value: string): string => value.replaceAll("'", "''");

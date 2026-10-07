@@ -6,7 +6,7 @@ Backend foundation for an on-campus merchandise reservation and pickup system. I
 
 `api` → validation/authorization → services → repository contracts → SharePoint, Power Automate, or local mock adapters.
 
-SharePoint is the intended operational data source. The current in-memory adapter contains a few clearly fake records for development only. Development authentication is opt-in and refuses to run when `NODE_ENV` or `VERCEL_ENV` is `production`.
+SharePoint reads use Microsoft Graph with application authentication; the in-memory adapter remains available for development. Services depend on the same asynchronous repository contract. Development authentication is opt-in and refuses to run when `NODE_ENV` or `VERCEL_ENV` is `production`.
 
 ## Setup
 
@@ -17,6 +17,10 @@ npm run dev
 ```
 
 Set `ENABLE_DEV_AUTH=true` and `DEV_AUTH_EMAIL=customer@example.test` only for local testing. You may also send `x-dev-user` with one of the fake accounts. Never enable this in production.
+
+Set `DATA_PROVIDER=sharepoint` for real reads and configure the site, tenant, client ID, and client secret from `.env.example`. The Entra application needs `Sites.Selected` access granted to the site (or an appropriate broader Graph application permission). Optional list IDs avoid name resolution. Tokens and list IDs are cached only in memory. Production never falls back to mock mode.
+
+The production SharePoint adapter is read-only. Business writes remain mock-only until their existing Power Automate workflows are connected.
 
 ## Scripts
 
@@ -36,4 +40,3 @@ Configure server-only SharePoint and Power Automate values from `.env.example` i
 ## Deferred
 
 Production identity and integrations, CSV/Excel/PDF/email exports, scheduled reports, chatbot, and final frontend.
-
