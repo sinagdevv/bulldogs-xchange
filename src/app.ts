@@ -14,6 +14,7 @@ import { ReservationService } from "./services/reservation-service.js";
 import { SqlBusinessService } from "./services/sql-business-service.js";
 import { SqlAdminService } from "./services/sql-admin-service.js";
 import { OutboxDispatcher } from "./services/outbox-dispatcher.js";
+import { UserProvisioningService } from "./services/user-provisioning-service.js";
 
 export const repository = createRepository();
 const auth = new AuthService(repository), catalog = new CatalogService(repository), reservations = new ReservationService(repository, catalog), queue = new QueueService(repository), analytics = new AnalyticsService(repository);
@@ -21,6 +22,7 @@ const sql = repository instanceof SqlServerRepository && "transaction" in reposi
 const sqlBusiness = sql ? new SqlBusinessService(sql) : null;
 const sqlAdmin = sql ? new SqlAdminService(sql) : null;
 const outbox = sql ? new OutboxDispatcher(sql) : null;
+const provisioning=sql?new UserProvisioningService(sql):null;
 const bool = (value: unknown) => value === undefined ? undefined : String(value) === "true";
 const notificationId = z.string().trim().min(1).max(100);
 const pathOf = (req: RequestLike) => new URL(req.url ?? "/", "http://localhost").pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);
@@ -38,7 +40,8 @@ export async function handle(req: RequestLike, res: ResponseLike): Promise<void>
     if(route.startsWith("internal/outbox/")){requireDispatchSecret(req); if(route==="internal/outbox/dispatch"&&method==="POST") return void res.status(200).json(ok(await outbox!.dispatchBatch())); if(route==="internal/outbox/health"&&method==="GET") return void res.status(200).json(ok(await outbox!.health())); if(route==="internal/outbox/dead-letters"&&method==="GET") return void res.status(200).json(ok(await outbox!.deadLetters())); if(parts[2]==="dead-letters"&&parts[3]&&parts[4]==="retry"&&method==="POST") return void res.status(200).json(ok(await outbox!.retryDeadLetter(parts[3])));}
     if (method === "GET" && route === "internal/integrations/sharepoint") { if (process.env.NODE_ENV === "production") await requireAdmin(auth, req); if (!(repository instanceof ProductionSharePointRepository)) return void res.status(200).json(ok({ configured: false, reachable: false, site: null, listsResolved: 0 })); return void res.status(200).json(ok(await repository.health())); }
     if (method === "GET" && route === "config/public") return void res.status(200).json(ok({ campusPickupOnly: true }));
-    if (method === "GET" && route === "session") { const user=await auth.getCurrentUser(req); return void res.status(200).json(ok(user?{authenticated:true,user:{id:user.id,name:user.displayName,email:user.email,role:user.role,department:user.department,customerType:user.customerType}}:{authenticated:false,user:null})); }
+    if (method === "GET" && route === "session") { const identity=await auth.getIdentity(req).catch(e=>{if(e instanceof AppError&&e.code==="UNAUTHORIZED")return null;throw e});if(!identity)return void res.status(200).json(ok({authenticated:false,user:null,onboardingRequired:false}));const user=await repository.getUserByEmail(identity.email);if(user&&!user.isActive)throw new AppError("INACTIVE_USER","User account is inactive.");return void res.status(200).json(ok(user?{authenticated:true,user:{id:user.id,displayName:user.displayName,email:user.email,role:user.role,department:user.department,customerType:user.customerType},onboardingRequired:false}:{authenticated:true,user:null,onboardingRequired:true})); }
+    if(method==="POST"&&route==="onboarding/customer"){if(!provisioning)throw new AppError("CONFIGURATION_ERROR","SQL account provisioning is unavailable.");const identity=await auth.getIdentity(req);return void res.status(201).json(ok(await provisioning.registerCustomer(identity,req.body),"Customer account created."));}
     if (method === "GET" && route === "me") return void res.status(200).json(ok(await requireAuthenticated(auth, req)));
     if (method === "GET" && route === "categories") return void res.status(200).json(ok(await catalog.getCategories()));
     if (method === "GET" && route === "products") return void res.status(200).json(ok(await catalog.getProducts({ search: String(req.query?.search ?? "") || undefined, category: String(req.query?.category ?? "") || undefined, featured: bool(req.query?.featured), active: bool(req.query?.active), sort: req.query?.sort as "title" | "price" | "-price" | undefined })));

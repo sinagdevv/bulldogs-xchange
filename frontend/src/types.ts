@@ -10,7 +10,7 @@ export interface Reservation{id:string;reference:string;customerEmail:string;sta
 export interface QueueRecord{id:string;queueNumber:string;customerEmail:string;reservationId?:string;queueType:"Express"|"Regular";status:QueueStatus;queueDate:string}
 export interface QueueSummary{waiting:number;serving:string[]}
 export interface Notification{id:string;recipientEmail:string;type:string;title:string;message:string;deliveryStatus:string;relatedRecord?:string;isRead:boolean;createdAt:string}
-export interface Session{authenticated:boolean;user:User|null}
+export interface Session{authenticated:boolean;user:User|null;onboardingRequired?:boolean}
 export interface ApiSuccess<T>{success:true;data:T;reference:string|null;message:string}
 export interface ApiFailure{success:false;error:{code:string;message:string}}
 export interface CatalogQuery{search?:string;category?:string;sort?:"title"|"price"|"-price";featured?:boolean}

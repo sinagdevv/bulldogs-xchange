@@ -16,7 +16,7 @@ export class PowerAutomateHttpClient {
     for (let attempt = 0; attempt < 3; attempt++) {
       const started = Date.now(); let response: Response;
       try { response = await this.fetcher(url, { method: "POST", headers: { "content-type": "application/json", "x-bx-request-id": requestId, ...(secret ? { "x-bx-api-key": secret } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(this.timeoutMs) }); }
-      catch { throw new AppError("EXTERNAL_SERVICE_ERROR", "Power Automate request timed out or failed."); }
+      catch { if(attempt<2){await new Promise((resolve)=>setTimeout(resolve,100*(attempt+1)));continue;} throw new AppError("EXTERNAL_SERVICE_ERROR", "Power Automate request timed out or failed."); }
       this.log({ operation, status: response.status, duration: Date.now() - started, requestId });
       if ([429, 502, 503, 504].includes(response.status) && attempt < 2) { const seconds = Number(response.headers.get("retry-after") ?? 0); await new Promise((resolve) => setTimeout(resolve, seconds > 0 ? Math.min(seconds * 1000, 5000) : 100 * (attempt + 1))); continue; }
       let raw: unknown; try { raw = await response.json(); } catch { throw new AppError("EXTERNAL_SERVICE_ERROR", "Power Automate returned an invalid response."); }

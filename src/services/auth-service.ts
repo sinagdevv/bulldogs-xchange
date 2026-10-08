@@ -20,6 +20,21 @@ export class AuthService {
     return user;
   }
 
+  async getIdentity(req:RequestLike){
+    const production=process.env.VERCEL_ENV==="production"||process.env.NODE_ENV==="production";
+    if(production&&process.env.ENABLE_DEV_AUTH==="true")throw new AppError("CONFIGURATION_ERROR","Development authentication is disabled in production.");
+    const devEmail=!production&&process.env.ENABLE_DEV_AUTH==="true"?String(req.headers["x-dev-user"]??process.env.DEV_AUTH_EMAIL??"").trim().toLowerCase():"";
+    const identity=devEmail?{subject:`development:${devEmail}`,email:devEmail}:await this.provider.authenticate(req);
+    if(!identity)throw new AppError("UNAUTHORIZED","Authentication required.");
+    return identity;
+  }
+
+  async getRegisteredUser(req:RequestLike){
+    const identity=await this.getIdentity(req),user=await this.repo.getUserByEmail(identity.email);
+    if(user&&!user.isActive)throw new AppError("INACTIVE_USER","User account is inactive.");
+    return{identity,user};
+  }
+
   async requireUser(req: RequestLike): Promise<User> {
     const user = await this.getCurrentUser(req);
     if (!user) throw new AppError("UNAUTHORIZED", "Authentication required.");

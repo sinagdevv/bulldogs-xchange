@@ -27,7 +27,9 @@
     "db:pg:seed": "node --env-file=.env.local scripts/postgres-db.mjs seed",
     "db:pg:integrity": "node --env-file=.env.local scripts/postgres-db.mjs integrity",
     "test:pg": "node --env-file=.env.local scripts/postgres-db.mjs smoke",
-    "test:pg:rollback": "npm run build --silent && node --env-file=.env.local scripts/postgres-rollback-validation.mjs"
+    "test:pg:rollback": "npm run build --silent && node --env-file=.env.local scripts/postgres-rollback-validation.mjs",
+    "test:pg:outbox": "npm run build --silent && node --env-file=.env.local scripts/outbox-postgres-validation.mjs",
+    "auth:bootstrap-admin": "npm run build --silent && node --env-file=.env.local dist/src/cli/bootstrap-admin.js"
   },
   "dependencies": {
     "jose": "^6.2.12",

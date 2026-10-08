@@ -4,7 +4,7 @@ import type {ApiFailure,ApiSuccess,Availability,CatalogQuery,Category,Notificati
 
 export class ApiError extends Error{constructor(readonly code:string,message:string,readonly status:number){super(message);}}
 const object=(value:unknown):value is Record<string,unknown>=>typeof value==="object"&&value!==null;
-export const fixtureMode=import.meta.env.DEV&&import.meta.env.VITE_ENABLE_API_FIXTURES==="true";
+export const fixtureMode=import.meta.env.DEV&&import.meta.env.MODE!=="test"&&import.meta.env.VITE_ENABLE_API_FIXTURES==="true";
 const fixtureState={reservations:structuredClone(fixtureReservations),queue:structuredClone(fixtureQueue),notifications:structuredClone(fixtureNotifications)};
 
 function fixtureRequest<T>(path:string,init:RequestInit):T{
@@ -43,6 +43,7 @@ export class ApiClient{
     const payload:unknown=await response.json().catch(()=>null);if(!response.ok){const failure=object(payload)&&payload.success===false?payload as unknown as ApiFailure:null;throw new ApiError(failure?.error.code??"REQUEST_FAILED",failure?.error.message??"The request could not be completed.",response.status);}if(!object(payload)||payload.success!==true||!("data" in payload))throw new ApiError("INVALID_RESPONSE","The service returned an invalid response.",response.status);return (payload as unknown as ApiSuccess<T>).data;
   }
   session(signal?:AbortSignal){const fixture=this.auth.getFixtureUser();return fixture?Promise.resolve<Session>({authenticated:true,user:fixture}):this.request<Session>("session",{signal});}
+  onboard(input:{schoolId:string;fullName:string;customerType:string;departmentId?:number}){return this.request<User>("onboarding/customer",{method:"POST",body:JSON.stringify(input)});}
   profile(signal?:AbortSignal){return this.request<User>("profile",{signal});}categories(signal?:AbortSignal){return this.request<Category[]>("categories",{signal});}
   products(queryOrSignal:CatalogQuery|AbortSignal={},signal?:AbortSignal){const query=queryOrSignal instanceof AbortSignal?{}:queryOrSignal,requestSignal=queryOrSignal instanceof AbortSignal?queryOrSignal:signal,params=new URLSearchParams({active:"true"});Object.entries(query).forEach(([k,v])=>{if(v!==undefined&&v!=="")params.set(k,String(v));});return this.request<Product[]>(`products?${params}`,{signal:requestSignal});}
   product(id:string,signal?:AbortSignal){return this.request<Product>(`products/${encodeURIComponent(id)}`,{signal});}variants(id:string,signal?:AbortSignal){return this.request<Variant[]>(`products/${encodeURIComponent(id)}/variants`,{signal});}availability(id:string,signal?:AbortSignal){return this.request<Availability[]>(`products/${encodeURIComponent(id)}/availability`,{signal});}
