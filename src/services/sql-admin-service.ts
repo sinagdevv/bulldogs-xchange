@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { User } from "../domain/models.js";
-import { SqlServerConnectionManager, type SqlExecutor } from "../integrations/sql-server.js";
+import { type SqlExecutor, type SqlTransactionManager } from "../integrations/sql-server.js";
 import { AppError } from "../lib/errors.js";
 
 const name=z.string().trim().min(1).max(200), sku=z.string().trim().min(1).max(100), positiveId=z.coerce.number().int().positive();
@@ -16,7 +16,7 @@ const parse=<T>(schema:z.ZodType<T>,input:unknown):T=>{const result=schema.safeP
 const id=(value:string)=>parse(positiveId,value), json=(value:unknown)=>JSON.stringify(value);
 
 export class SqlAdminService {
-  constructor(private manager:SqlServerConnectionManager){}
+  constructor(private manager:SqlTransactionManager){}
   private audit(db:SqlExecutor,actor:User,action:string,entity:string,entityId:string,previous:unknown,next:unknown){return db.query("INSERT dbo.AuditLogs(UserId,Action,Entity,EntityId,PreviousValue,NewValue) VALUES(@userId,@action,@entity,@entityId,@previous,@next)",{userId:Number(actor.id),action,entity,entityId,previous:previous===null?null:json(previous),next:json(next)});}
   private async category(db:SqlExecutor,categoryId:number){if(!(await db.query<Row>("SELECT CategoryId FROM dbo.Categories WHERE CategoryId=@categoryId",{categoryId}))[0])throw new AppError("NOT_FOUND","Category not found.");}
   private async product(db:SqlExecutor,productId:number){if(!(await db.query<Row>("SELECT ProductId FROM dbo.Products WHERE ProductId=@productId",{productId}))[0])throw new AppError("NOT_FOUND","Product not found.");}

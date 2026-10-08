@@ -16,7 +16,7 @@ export class OutboxDispatcher {
 
   async claimBatch(limit = positive(process.env.OUTBOX_BATCH_SIZE,10,100)): Promise<OutboxEvent[]> {
     const batch=positive(String(limit),10,100), lease=positive(process.env.OUTBOX_LEASE_SECONDS,120,3600);
-    return (await this.db.query<Row>(`;
+    const rows=this.db.dialect==="postgres"?await this.db.query<Row>(`WITH eligible AS (SELECT AutomationEventId FROM dbo.AutomationOutbox WHERE (Status='Pending' AND COALESCE(NextAttemptAt,CreatedAt)<=CURRENT_TIMESTAMP) OR (Status='Processing' AND LockedAt<CURRENT_TIMESTAMP-(@lease*INTERVAL '1 second')) ORDER BY CreatedAt FOR UPDATE SKIP LOCKED LIMIT @limit) UPDATE dbo.AutomationOutbox o SET Status='Processing',Attempts=o.Attempts+1,LockedAt=CURRENT_TIMESTAMP,ProcessedAt=CURRENT_TIMESTAMP FROM eligible e WHERE o.AutomationEventId=e.AutomationEventId RETURNING o.AutomationEventId,o.EventId,o.EventType,o.AggregateType,o.AggregateId,o.Payload,o.Attempts,o.CreatedAt`,{limit:batch,lease}):await this.db.query<Row>(`;
 WITH eligible AS (
   SELECT TOP (@limit) * FROM dbo.AutomationOutbox WITH (UPDLOCK,READPAST,ROWLOCK)
   WHERE (Status=N'Pending' AND COALESCE(NextAttemptAt,CreatedAt)<=SYSUTCDATETIME())
@@ -24,11 +24,11 @@ WITH eligible AS (
   ORDER BY CreatedAt
 )
 UPDATE eligible SET Status=N'Processing',Attempts=Attempts+1,LockedAt=SYSUTCDATETIME(),ProcessedAt=SYSUTCDATETIME()
-OUTPUT INSERTED.AutomationEventId,INSERTED.EventId,INSERTED.EventType,INSERTED.AggregateType,INSERTED.AggregateId,INSERTED.Payload,INSERTED.Attempts,INSERTED.CreatedAt;`,{limit:batch,lease})).map((row)=>({id:Number(row.AutomationEventId),eventId:String(row.EventId),eventType:String(row.EventType),aggregateType:String(row.AggregateType),aggregateId:String(row.AggregateId),payload:JSON.parse(String(row.Payload)) as Record<string,unknown>,attempt:Number(row.Attempts),createdAt:new Date(row.CreatedAt as string|Date)}));
+OUTPUT INSERTED.AutomationEventId,INSERTED.EventId,INSERTED.EventType,INSERTED.AggregateType,INSERTED.AggregateId,INSERTED.Payload,INSERTED.Attempts,INSERTED.CreatedAt;`,{limit:batch,lease}); return rows.map((row)=>({id:Number(row.AutomationEventId),eventId:String(row.EventId),eventType:String(row.EventType),aggregateType:String(row.AggregateType),aggregateId:String(row.AggregateId),payload:typeof row.Payload==="string"?JSON.parse(row.Payload) as Record<string,unknown>:row.Payload as Record<string,unknown>,attempt:Number(row.Attempts),createdAt:new Date(row.CreatedAt as string|Date)}));
   }
 
   async claimEvent(eventId: string): Promise<OutboxEvent|undefined> {
-    const rows=await this.db.query<Row>(`;
+    const rows=this.db.dialect==="postgres"?await this.db.query<Row>(`WITH eligible AS (SELECT AutomationEventId FROM dbo.AutomationOutbox WHERE EventId=@eventId AND Status='Pending' FOR UPDATE SKIP LOCKED) UPDATE dbo.AutomationOutbox o SET Status='Processing',Attempts=o.Attempts+1,LockedAt=CURRENT_TIMESTAMP,ProcessedAt=CURRENT_TIMESTAMP FROM eligible e WHERE o.AutomationEventId=e.AutomationEventId RETURNING o.AutomationEventId,o.EventId,o.EventType,o.AggregateType,o.AggregateId,o.Payload,o.Attempts,o.CreatedAt`,{eventId}):await this.db.query<Row>(`;
 WITH eligible AS (
   SELECT * FROM dbo.AutomationOutbox WITH (UPDLOCK,READPAST,ROWLOCK)
   WHERE EventId=@eventId AND Status=N'Pending'
@@ -36,7 +36,7 @@ WITH eligible AS (
 UPDATE eligible SET Status=N'Processing',Attempts=Attempts+1,LockedAt=SYSUTCDATETIME(),ProcessedAt=SYSUTCDATETIME()
 OUTPUT INSERTED.AutomationEventId,INSERTED.EventId,INSERTED.EventType,INSERTED.AggregateType,INSERTED.AggregateId,INSERTED.Payload,INSERTED.Attempts,INSERTED.CreatedAt;`,{eventId});
     const row=rows[0];
-    return row?{id:Number(row.AutomationEventId),eventId:String(row.EventId),eventType:String(row.EventType),aggregateType:String(row.AggregateType),aggregateId:String(row.AggregateId),payload:JSON.parse(String(row.Payload)) as Record<string,unknown>,attempt:Number(row.Attempts),createdAt:new Date(row.CreatedAt as string|Date)}:undefined;
+    return row?{id:Number(row.AutomationEventId),eventId:String(row.EventId),eventType:String(row.EventType),aggregateType:String(row.AggregateType),aggregateId:String(row.AggregateId),payload:typeof row.Payload==="string"?JSON.parse(row.Payload) as Record<string,unknown>:row.Payload as Record<string,unknown>,attempt:Number(row.Attempts),createdAt:new Date(row.CreatedAt as string|Date)}:undefined;
   }
 
   private async notification(event: OutboxEvent): Promise<NotificationEvent> {
@@ -61,7 +61,7 @@ OUTPUT INSERTED.AutomationEventId,INSERTED.EventId,INSERTED.EventType,INSERTED.A
 
   private async dispatch(events: OutboxEvent[]) {
     const max=positive(process.env.OUTBOX_MAX_ATTEMPTS,5,20); let delivered=0,failed=0,deadLetter=0;
-    for(const event of events){const started=Date.now(); try{await this.automation.notifyEvent(await this.notification(event)); await this.db.query("UPDATE dbo.AutomationOutbox SET Status=N'Delivered',DeliveredAt=SYSUTCDATETIME(),LockedAt=NULL,LastError=NULL WHERE AutomationEventId=@id AND Status=N'Processing'",{id:event.id}); delivered++; this.log({eventId:event.eventId,eventType:event.eventType,attempt:event.attempt,status:"Delivered",duration:Date.now()-started});}catch(error){const dead=event.attempt>=max; await this.db.query("UPDATE dbo.AutomationOutbox SET Status=@status,NextAttemptAt=CASE WHEN @dead=1 THEN NULL ELSE DATEADD(second,@delay,SYSUTCDATETIME()) END,LockedAt=NULL,LastError=@error WHERE AutomationEventId=@id AND Status=N'Processing'",{id:event.id,status:dead?"DeadLetter":"Pending",dead,delay:delaySeconds(event.attempt),error:safeError(error)}); dead?deadLetter++:failed++; this.log({eventId:event.eventId,eventType:event.eventType,attempt:event.attempt,status:dead?"DeadLetter":"Pending",duration:Date.now()-started});}}
+    for(const event of events){const started=Date.now(); try{await this.automation.notifyEvent(await this.notification(event)); await this.db.query("UPDATE dbo.AutomationOutbox SET Status=N'Delivered',DeliveredAt=SYSUTCDATETIME(),LockedAt=NULL,LastError=NULL WHERE AutomationEventId=@id AND Status=N'Processing'",{id:event.id}); delivered++; this.log({eventId:event.eventId,eventType:event.eventType,attempt:event.attempt,status:"Delivered",duration:Date.now()-started});}catch(error){const dead=event.attempt>=max; await this.db.query("UPDATE dbo.AutomationOutbox SET Status=@status,NextAttemptAt=CASE WHEN @dead=1 THEN NULL ELSE DATEADD(second,@delay,SYSUTCDATETIME()) END,LockedAt=NULL,LastError=@error WHERE AutomationEventId=@id AND Status=N'Processing'",{id:event.id,status:dead?"DeadLetter":"Pending",dead:dead?1:0,delay:delaySeconds(event.attempt),error:safeError(error)}); dead?deadLetter++:failed++; this.log({eventId:event.eventId,eventType:event.eventType,attempt:event.attempt,status:dead?"DeadLetter":"Pending",duration:Date.now()-started});}}
     return {claimed:events.length,delivered,failed,deadLetter};
   }
 
@@ -77,5 +77,5 @@ OUTPUT INSERTED.AutomationEventId,INSERTED.EventId,INSERTED.EventType,INSERTED.A
 
   async health(){const rows=await this.db.query<Row>("SELECT Status,COUNT(*) Count,MIN(CASE WHEN Status=N'Pending' THEN CreatedAt END) OldestPendingAt FROM dbo.AutomationOutbox GROUP BY Status"); const counts:Record<OutboxStatus,number>={Pending:0,Processing:0,Delivered:0,DeadLetter:0,Superseded:0}; let oldestPendingAt:string|null=null; for(const row of rows){if(String(row.Status) in counts) counts[String(row.Status) as OutboxStatus]=Number(row.Count); if(row.OldestPendingAt) oldestPendingAt=new Date(row.OldestPendingAt as string|Date).toISOString();} return {...counts,oldestPendingAt};}
   deadLetters(){return this.db.query<Row>("SELECT EventId,EventType,AggregateType,AggregateId,Attempts,CreatedAt,LastError FROM dbo.AutomationOutbox WHERE Status=N'DeadLetter' ORDER BY CreatedAt");}
-  async retryDeadLetter(eventId:string){const rows=await this.db.query<Row>("UPDATE dbo.AutomationOutbox SET Status=N'Pending',Attempts=0,NextAttemptAt=SYSUTCDATETIME(),LockedAt=NULL WHERE EventId=@eventId AND Status=N'DeadLetter'; SELECT @@ROWCOUNT Updated",{eventId}); if(Number(rows[0]?.Updated)!==1) throw new AppError("NOT_FOUND","Dead-letter event not found."); return {eventId,status:"Pending"};}
+  async retryDeadLetter(eventId:string){const statement=this.db.dialect==="postgres"?"UPDATE dbo.AutomationOutbox SET Status='Pending',Attempts=0,NextAttemptAt=CURRENT_TIMESTAMP,LockedAt=NULL WHERE EventId=@eventId AND Status='DeadLetter' RETURNING 1 Updated":"UPDATE dbo.AutomationOutbox SET Status=N'Pending',Attempts=0,NextAttemptAt=SYSUTCDATETIME(),LockedAt=NULL WHERE EventId=@eventId AND Status=N'DeadLetter'; SELECT @@ROWCOUNT Updated";const rows=await this.db.query<Row>(statement,{eventId}); if(Number(rows[0]?.Updated)!==1) throw new AppError("NOT_FOUND","Dead-letter event not found."); return {eventId,status:"Pending"};}
 }

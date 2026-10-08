@@ -5,7 +5,7 @@ import { cors, ok, secure, sendError, type RequestLike, type ResponseLike } from
 import { createRepository } from "./repositories/provider.js";
 import { ProductionSharePointRepository } from "./repositories/production-sharepoint-repository.js";
 import { SqlServerRepository } from "./repositories/sql-server-repository.js";
-import { SqlServerConnectionManager } from "./integrations/sql-server.js";
+import type { SqlTransactionManager } from "./integrations/sql-server.js";
 import { AnalyticsService } from "./services/analytics-service.js";
 import { AuthService, requireAdmin, requireAuthenticated, requireCustomer, requireStaffOrAdmin } from "./services/auth-service.js";
 import { CatalogService } from "./services/catalog-service.js";
@@ -17,9 +17,10 @@ import { OutboxDispatcher } from "./services/outbox-dispatcher.js";
 
 export const repository = createRepository();
 const auth = new AuthService(repository), catalog = new CatalogService(repository), reservations = new ReservationService(repository, catalog), queue = new QueueService(repository), analytics = new AnalyticsService(repository);
-const sqlBusiness = repository instanceof SqlServerRepository && repository.db instanceof SqlServerConnectionManager ? new SqlBusinessService(repository.db) : null;
-const sqlAdmin = repository instanceof SqlServerRepository && repository.db instanceof SqlServerConnectionManager ? new SqlAdminService(repository.db) : null;
-const outbox = repository instanceof SqlServerRepository && repository.db instanceof SqlServerConnectionManager ? new OutboxDispatcher(repository.db) : null;
+const sql = repository instanceof SqlServerRepository && "transaction" in repository.db ? repository.db as SqlTransactionManager : null;
+const sqlBusiness = sql ? new SqlBusinessService(sql) : null;
+const sqlAdmin = sql ? new SqlAdminService(sql) : null;
+const outbox = sql ? new OutboxDispatcher(sql) : null;
 const bool = (value: unknown) => value === undefined ? undefined : String(value) === "true";
 const notificationId = z.string().trim().min(1).max(100);
 const pathOf = (req: RequestLike) => new URL(req.url ?? "/", "http://localhost").pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);

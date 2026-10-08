@@ -6,3 +6,6 @@ dist/
 coverage/
 *.log
 .serena/
+
+.vercel
+supabase/.temp/

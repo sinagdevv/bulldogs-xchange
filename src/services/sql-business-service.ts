@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { User } from "../domain/models.js";
 import { AppError } from "../lib/errors.js";
-import { SqlServerConnectionManager, type SqlExecutor } from "../integrations/sql-server.js";
+import { type SqlExecutor, type SqlTransactionManager } from "../integrations/sql-server.js";
 
 const itemSchema = z.object({ productVariantId: z.coerce.number().int().positive(), quantity: z.coerce.number().int().positive().max(1000) });
 export const createReservationSchema = z.object({ items: z.array(itemSchema).min(1).max(50) });
@@ -15,12 +15,12 @@ const parse = <T>(schema: z.ZodType<T>, input: unknown): T => { const result = s
 const idValue = (value: string): number => parse(z.coerce.number().int().positive(), value);
 
 export class SqlBusinessService {
-  constructor(private manager: SqlServerConnectionManager) {}
+  constructor(private manager: SqlTransactionManager) {}
   private key(value?: string | string[]) { const key = Array.isArray(value) ? value[0] : value; if (!key || key.length > 200) throw new AppError("VALIDATION_ERROR", "A valid Idempotency-Key header is required."); return key; }
   private async counter(db: SqlExecutor) { const row = (await db.query<Row>("SELECT SettingValue FROM dbo.SystemSettings WITH (UPDLOCK,HOLDLOCK) WHERE SettingKey=N'ReferenceCounter'"))[0]; if (!row) throw new AppError("CONFIGURATION_ERROR", "ReferenceCounter setting is missing."); const value = number(row.SettingValue) + 1; await db.query("UPDATE dbo.SystemSettings SET SettingValue=@value,UpdatedAt=SYSUTCDATETIME() WHERE SettingKey=N'ReferenceCounter'", { value: String(value) }); return value; }
   private async idempotent(db: SqlExecutor, scope: string, key: string) { return (await db.query<Row>("SELECT EntityId,ResultReference FROM dbo.IdempotencyKeys WITH (UPDLOCK,HOLDLOCK) WHERE Scope=@scope AND IdempotencyKey=@key", { scope, key }))[0]; }
   private async outbox(db: SqlExecutor, eventType: string, aggregateType: string, aggregateId: string, payload: object) { if(eventType==="TransactionCompleted") await db.query("INSERT dbo.Notifications(RecipientUserId,NotificationType,Title,Message,RelatedEntity,RelatedEntityId,DeliveryStatus) SELECT CustomerId,N'TransactionCompleted',N'Transaction completed',CONCAT(Reference,N' was completed.'),N'Transaction',TransactionId,N'InApp' FROM dbo.Transactions WHERE TransactionId=@id",{id:number(aggregateId)}); return db.query("INSERT dbo.AutomationOutbox(EventType,AggregateType,AggregateId,Payload) VALUES(@eventType,@aggregateType,@aggregateId,@payload)", { eventType, aggregateType, aggregateId, payload: JSON.stringify(payload) }); }
-  private audit(db: SqlExecutor, userId: number, action: string, entity: string, entityId: string, details?: string) { return db.query("INSERT dbo.AuditLogs(UserId,Action,Entity,EntityId,Details) VALUES(@userId,@action,@entity,@entityId,@details)", { userId, action, entity, entityId, details: details ?? null }); }
+  private audit(db: SqlExecutor, userId: number, action: string, entity: string, entityId: string, details?: string) { return db.query("INSERT dbo.AuditLogs(UserId,Action,Entity,EntityId,Details) VALUES(@userId,@action,@entity,@entityId,@details)", { userId, action, entity, entityId, details: details===undefined ? null : JSON.stringify(details) }); }
   private notification(db:SqlExecutor,userId:number,type:string,title:string,message:string,entity:string,entityId:number){return db.query("INSERT dbo.Notifications(RecipientUserId,NotificationType,Title,Message,RelatedEntity,RelatedEntityId,DeliveryStatus) VALUES(@userId,@type,@title,@message,@entity,@entityId,N'InApp')",{userId,type,title,message,entity,entityId});}
 
   async createReservation(input: unknown, user: User, idempotency?: string | string[]) {
