@@ -22,33 +22,39 @@ function BarkyMascot({size=48,animate=false,wave=false,think=false}:{size?:numbe
   return(
     <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true" className={`barky-mascot${animate?" barky-breathe":""}${wave?" barky-wave":""}`}>
+      {/* Body — navy with gold collar band */}
       <ellipse cx="40" cy="58" rx="18" ry="14" fill="#1a3a6e"/>
       <rect x="26" y="52" width="28" height="7" rx="3.5" fill="#FFD700"/>
-      <circle cx="40" cy="55.5" r="2.5" fill="#e6b800"/>
-      <ellipse cx="40" cy="36" rx="22" ry="21" fill="#f5f0e8"/>
-      <ellipse cx="19" cy="26" rx="6" ry="9" fill="#d4cfc6" transform="rotate(-15 19 26)"/>
-      <ellipse cx="61" cy="26" rx="6" ry="9" fill="#d4cfc6" transform="rotate(15 61 26)"/>
-      <ellipse cx="19.5" cy="26.5" rx="3" ry="5.5" fill="#c4bdb4" transform="rotate(-15 19.5 26.5)"/>
-      <ellipse cx="60.5" cy="26.5" rx="3" ry="5.5" fill="#c4bdb4" transform="rotate(15 60.5 26.5)"/>
-      <ellipse cx="29" cy="33" rx="7" ry="7.5" fill="#111"/>
-      <ellipse cx="51" cy="33" rx="7" ry="7.5" fill="#111"/>
+      <circle cx="40" cy="55.5" r="2.5" fill="#c8980a"/>
+      {/* Head — yellow-gold, dark outline for contrast */}
+      <ellipse cx="40" cy="36" rx="22" ry="21" fill="#FFD700" stroke="#b8880a" strokeWidth="1.2"/>
+      {/* Ears — darker gold outer, deepest gold inner */}
+      <ellipse cx="19" cy="26" rx="6" ry="9" fill="#e6a800" stroke="#b8880a" strokeWidth="1" transform="rotate(-15 19 26)"/>
+      <ellipse cx="61" cy="26" rx="6" ry="9" fill="#e6a800" stroke="#b8880a" strokeWidth="1" transform="rotate(15 61 26)"/>
+      <ellipse cx="19.5" cy="26.5" rx="3" ry="5.5" fill="#c87800" transform="rotate(-15 19.5 26.5)"/>
+      <ellipse cx="60.5" cy="26.5" rx="3" ry="5.5" fill="#c87800" transform="rotate(15 60.5 26.5)"/>
+      {/* Eyes — dark with white glint */}
+      <ellipse cx="29" cy="33" rx="7" ry="7.5" fill="#1a1a1a"/>
+      <ellipse cx="51" cy="33" rx="7" ry="7.5" fill="#1a1a1a"/>
       <ellipse cx="31.5" cy="30.5" rx="2.5" ry="2.5" fill="white"/>
       <ellipse cx="53.5" cy="30.5" rx="2.5" ry="2.5" fill="white"/>
-      <circle cx="30" cy="32" r="1" fill="white" opacity="0.5"/>
-      <circle cx="52" cy="32" r="1" fill="white" opacity="0.5"/>
-      <ellipse cx="40" cy="43" rx="10" ry="8" fill="#e8e0d0"/>
-      <ellipse cx="40" cy="39.5" rx="5" ry="3.5" fill="#3a3030"/>
-      <ellipse cx="39" cy="38.5" rx="1.5" ry="1" fill="#555" opacity="0.5"/>
-      <path d="M34 45 Q40 49 46 45" stroke="#b89a8a" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-      <path d="M40 47 L40 49" stroke="#b89a8a" strokeWidth="1.5" strokeLinecap="round"/>
-      <ellipse cx="23" cy="40" rx="4" ry="2.5" fill="#e8a0a0" opacity="0.35"/>
-      <ellipse cx="57" cy="40" rx="4" ry="2.5" fill="#e8a0a0" opacity="0.35"/>
+      <circle cx="30" cy="32" r="1" fill="white" opacity="0.6"/>
+      <circle cx="52" cy="32" r="1" fill="white" opacity="0.6"/>
+      {/* Muzzle — cream/pale so it reads distinct from gold face */}
+      <ellipse cx="40" cy="43" rx="10" ry="8" fill="#fffbe0" stroke="#c8a010" strokeWidth="0.8"/>
+      <ellipse cx="40" cy="39.5" rx="5" ry="3.5" fill="#2a1a1a"/>
+      <ellipse cx="39" cy="38.5" rx="1.5" ry="1" fill="#555" opacity="0.4"/>
+      <path d="M34 45 Q40 49 46 45" stroke="#7a5800" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <path d="M40 47 L40 49" stroke="#7a5800" strokeWidth="1.5" strokeLinecap="round"/>
+      {/* Cheek blush — warm golden tint */}
+      <ellipse cx="22" cy="40" rx="4" ry="2.5" fill="#e87820" opacity="0.28"/>
+      <ellipse cx="58" cy="40" rx="4" ry="2.5" fill="#e87820" opacity="0.28"/>
       {wave&&(
         <g className="barky-paw">
-          <ellipse cx="63" cy="54" rx="7" ry="6" fill="#f5f0e8" transform="rotate(-30 63 54)"/>
-          <ellipse cx="60" cy="50" rx="2.5" ry="2" fill="#e8e0d0" transform="rotate(-20 60 50)"/>
-          <ellipse cx="64" cy="48.5" rx="2.5" ry="2" fill="#e8e0d0" transform="rotate(-10 64 48.5)"/>
-          <ellipse cx="67.5" cy="50" rx="2.5" ry="2" fill="#e8e0d0" transform="rotate(10 67.5 50)"/>
+          <ellipse cx="63" cy="54" rx="7" ry="6" fill="#FFD700" stroke="#b8880a" strokeWidth="1" transform="rotate(-30 63 54)"/>
+          <ellipse cx="60" cy="50" rx="2.5" ry="2" fill="#e6a800" transform="rotate(-20 60 50)"/>
+          <ellipse cx="64" cy="48.5" rx="2.5" ry="2" fill="#e6a800" transform="rotate(-10 64 48.5)"/>
+          <ellipse cx="67.5" cy="50" rx="2.5" ry="2" fill="#e6a800" transform="rotate(10 67.5 50)"/>
         </g>
       )}
       {think&&(
