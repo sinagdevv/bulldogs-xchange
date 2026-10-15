@@ -1,4 +1,4 @@
-import {createHmac} from "node:crypto";
+import {createHash,createHmac} from "node:crypto";
 import {AppError} from "../lib/errors.js";
 import type {RequestLike} from "../lib/http.js";
 import type {SqlTransactionManager} from "../integrations/sql-server.js";
@@ -50,7 +50,7 @@ export class AuthRateLimiter{
     const email=typeof req.body==="object"&&req.body!==null&&"email" in req.body?String((req.body as {email?:unknown}).email??"").trim().toLowerCase():"unknown";
     const forwarded=process.env.VERCEL?header(req.headers["x-forwarded-for"])?.split(",")[0]?.trim():undefined;
     const identifiers=[["account",email,10],["ip",forwarded||"local",30]] as const;
-    try{for(const[type,value,limit]of identifiers){const key=`auth:${type}:${createHmac("sha256",this.secret).update(value).digest("hex")}`;if(await this.store.increment(key,60)>limit)throw new AppError("FORBIDDEN","Too many authentication attempts. Try again shortly.",429)}}
+    try{for(const[type,value,limit]of identifiers){const rawKey=`auth:${type}:${createHmac("sha256",this.secret).update(value).digest("hex")}`;const key=createHash("sha256").update(rawKey).digest("hex");if(await this.store.increment(key,60)>limit)throw new AppError("FORBIDDEN","Too many authentication attempts. Try again shortly.",429)}}
     catch(error){if(error instanceof AppError)throw error;throw new AppError("CONFIGURATION_ERROR","Authentication protection is temporarily unavailable.",503)}
   }
 }
