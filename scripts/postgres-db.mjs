@@ -4,6 +4,14 @@ import {readFileSync} from "node:fs";
 import pg from "pg";
 const command=process.argv[2],connectionString=process.env.SUPABASE_DATABASE_URL;
 if(!connectionString){console.log("SKIP: set SUPABASE_DATABASE_URL to run Postgres integration commands.");process.exit(0);}
+const operationalProject="miwodndxgrdyanrloxig",projectRef=process.env.SUPABASE_PROJECT_REF,expectedRef=process.env.HOSTED_DEMO_SUPABASE_PROJECT_REF;
+if(projectRef===operationalProject||connectionString.includes(operationalProject))throw new Error("Refusing the operational Supabase project.");
+if(command==="schema"||command==="seed"){
+  if(!expectedRef)throw new Error("HOSTED_DEMO_SUPABASE_PROJECT_REF is required before schema or seed commands.");
+  if(expectedRef===operationalProject||projectRef!==expectedRef)throw new Error("Hosted demo Supabase project identity does not match the approved target.");
+  const target=new URL(connectionString);
+  if(!target.hostname.includes(expectedRef)&&!target.username.includes(expectedRef))throw new Error("Hosted demo database URL does not identify the approved Supabase project.");
+}
 const ca=process.env.SUPABASE_CA_CERT_PATH;
 const pool=new pg.Pool({connectionString,ssl:process.env.POSTGRES_SSL==="false"?false:{ca:ca?readFileSync(ca,"utf8"):undefined,rejectUnauthorized:true},max:Number(process.env.POSTGRES_POOL_MAX??3)});
 try{

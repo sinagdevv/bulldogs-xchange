@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "npm ci && npm ci --prefix frontend",
+  "buildCommand": "npm --prefix frontend run build",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/*.ts": { "includeFiles": "certs/supabase-prod-ca-2021.crt" }
+  },
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/api/(.*)", "dest": "/api/[...path]" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}

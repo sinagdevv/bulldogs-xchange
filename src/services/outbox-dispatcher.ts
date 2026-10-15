@@ -5,7 +5,10 @@ import { PowerAutomateClient, type NotificationEvent } from "../integrations/pow
 
 type Row = Record<string, unknown>;
 export type OutboxEvent = { id: number; eventId: string; eventType: string; aggregateType: string; aggregateId: string; payload: Record<string, unknown>; attempt: number; createdAt: Date };
-const supported = new Set(["ReservationCreated", "ReservationCancelled", "ReservationReady", "QueueCalled", "TransactionCompleted"]);
+const financialEvents=["DEPOSIT_REQUIRED","DEPOSIT_SUBMITTED","DEPOSIT_VERIFIED","DEPOSIT_REJECTED","DEPOSIT_DEADLINE_REMINDER","RESERVATION_CONFIRMED","RESERVATION_READY","PICKUP_DEADLINE_REMINDER","RESERVATION_EXPIRED","REFUND_PENDING","REFUND_APPROVED","REFUND_PAYOUT_RECORDED","REFUND_COMPLETED","REFUND_FAILED","RECONCILIATION_EXCEPTION","LOW_STOCK_ALERT","DAILY_OPERATIONS_SUMMARY","DAILY_FINANCIAL_SUMMARY"];
+const coreEvents=["ReservationCreated","ReservationCancelled","ReservationReady","QueueCalled","TransactionCompleted"];
+const supported = new Set([...coreEvents,...financialEvents]);
+const allowedEvents=()=>new Set((process.env.POWER_AUTOMATE_EVENT_ALLOWLIST??coreEvents.join(",")).split(",").map(value=>value.trim()).filter(Boolean));
 const positive = (value: string | undefined, fallback: number, max: number) => { const parsed=Number(value); return Number.isInteger(parsed)&&parsed>0?Math.min(parsed,max):fallback; };
 const safeError = (error: unknown) => (error instanceof Error ? error.message : "Dispatch failed.").replace(/https?:\/\/\S+/gi,"[redacted]").replace(/(secret|authorization|password)\s*[:=]\s*\S+/gi,"$1=[redacted]").slice(0,500);
 const delaySeconds = (attempt: number) => [0,30,120,600,1800][Math.min(attempt,4)]!;
@@ -13,6 +16,8 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 
 export class OutboxDispatcher {
   constructor(private db: SqlExecutor, private automation = new PowerAutomateClient(), private log: (entry: Record<string,unknown>)=>void = (entry)=>console.info(JSON.stringify(entry))) {}
+
+  private enabled() { return process.env.POWER_AUTOMATE_DISPATCH_ENABLED === "true"; }
 
   async claimBatch(limit = positive(process.env.OUTBOX_BATCH_SIZE,10,100)): Promise<OutboxEvent[]> {
     const batch=positive(String(limit),10,100), lease=positive(process.env.OUTBOX_LEASE_SECONDS,120,3600);
@@ -40,11 +45,12 @@ OUTPUT INSERTED.AutomationEventId,INSERTED.EventId,INSERTED.EventType,INSERTED.A
   }
 
   private async notification(event: OutboxEvent): Promise<NotificationEvent> {
-    if(!supported.has(event.eventType)) throw new AppError("EXTERNAL_SERVICE_ERROR",`Unsupported outbox event type: ${event.eventType}`);
+    if(!supported.has(event.eventType)||!allowedEvents().has(event.eventType)) throw new AppError("EXTERNAL_SERVICE_ERROR",`Unsupported outbox event type: ${event.eventType}`);
     let row: Row|undefined;
     if(event.aggregateType==="Reservation") row=(await this.db.query<Row>("SELECT r.Reference,u.Email,u.FullName,r.ExpiresAt FROM dbo.Reservations r JOIN dbo.Users u ON u.UserId=r.CustomerId WHERE r.ReservationId=@id",{id:Number(event.aggregateId)}))[0];
     else if(event.aggregateType==="QueueEntry") row=(await this.db.query<Row>("SELECT q.QueueNumber,r.Reference,qt.QueueTypeName,u.Email,u.FullName FROM dbo.QueueEntries q JOIN dbo.Reservations r ON r.ReservationId=q.ReservationId JOIN dbo.QueueTypes qt ON qt.QueueTypeId=q.QueueTypeId JOIN dbo.Users u ON u.UserId=q.CustomerId WHERE q.QueueEntryId=@id",{id:Number(event.aggregateId)}))[0];
     else if(event.aggregateType==="Transaction") row=(await this.db.query<Row>("SELECT t.Reference TransactionReference,r.Reference,t.TotalAmount,u.Email,u.FullName FROM dbo.Transactions t JOIN dbo.Reservations r ON r.ReservationId=t.ReservationId JOIN dbo.Users u ON u.UserId=t.CustomerId WHERE t.TransactionId=@id",{id:Number(event.aggregateId)}))[0];
+    else if(event.aggregateType==="Inventory"||event.aggregateType==="System") row={Email:process.env.OPERATIONS_NOTIFICATION_EMAIL,FullName:"Bulldogs Xchange Operations",Reference:event.aggregateId};
     if(!row?.Email) throw new AppError("EXTERNAL_SERVICE_ERROR","Outbox event recipient was not found.");
     const occurredAt=event.createdAt.toISOString(), recipient={email:String(row.Email),name:String(row.FullName??"")};
     if(event.eventType==="ReservationCreated"){
@@ -56,6 +62,7 @@ OUTPUT INSERTED.AutomationEventId,INSERTED.EventId,INSERTED.EventType,INSERTED.A
     if(event.eventType==="QueueCalled"&&row.QueueNumber&&row.QueueTypeName&&row.Reference) return {eventId:event.eventId,eventType:"QueueCalled",occurredAt,recipient,data:{queueNumber:String(row.QueueNumber),queueType:String(row.QueueTypeName),reservationReference:String(row.Reference)}};
     if(event.eventType==="TransactionCompleted"&&row.TransactionReference&&row.Reference&&row.TotalAmount!=null) return {eventId:event.eventId,eventType:"TransactionCompleted",occurredAt,recipient,data:{transactionReference:String(row.TransactionReference),reservationReference:String(row.Reference),totalAmount:Number(row.TotalAmount),completedAt:occurredAt}};
     if(event.eventType==="ReservationCancelled"&&row.Reference) return {eventId:event.eventId,eventType:"ReservationCancelled",occurredAt,recipient,data:{reservationReference:String(row.Reference),cancelledAt:occurredAt}};
+    if(financialEvents.includes(event.eventType)&&row.Reference)return{eventId:event.eventId,eventType:event.eventType,occurredAt,recipient,data:{reservationReference:String(row.Reference),...event.payload}};
     throw new AppError("EXTERNAL_SERVICE_ERROR","Outbox notification data was incomplete.");
   }
 
@@ -65,10 +72,11 @@ OUTPUT INSERTED.AutomationEventId,INSERTED.EventId,INSERTED.EventType,INSERTED.A
     return {claimed:events.length,delivered,failed,deadLetter};
   }
 
-  async dispatchBatch(limit?: number) { return this.dispatch(await this.claimBatch(limit)); }
+  async dispatchBatch(limit?: number) { return this.enabled()?this.dispatch(await this.claimBatch(limit)):{claimed:0,delivered:0,failed:0,deadLetter:0}; }
 
   async dispatchEvent(eventId: string) {
     if(!uuid.test(eventId)) throw new AppError("VALIDATION_ERROR","EventId must be a valid UUID.");
+    if(!this.enabled()) return {eventId,claimed:0,delivered:0,failed:0,deadLetter:0,status:"Disabled" as const};
     const event=await this.claimEvent(eventId);
     if(!event) return {eventId,claimed:0,delivered:0,failed:0,deadLetter:0,status:"NotFoundOrNotPending" as const};
     const result=await this.dispatch([event]);

@@ -1,0 +1,52 @@
+source,optimized,product_sku,existing_catalog_sku,review
+assets/COLLEGE _TM/COL_TM_Blazer_F.png,/images/products/showcase/TM-BLAZ-001-FRONT.webp,TM-BLAZ-001,,verified filename; unmatched
+assets/COLLEGE _TM/COL_TM_Coat_M.png,/images/products/showcase/TM-COAT-001-FRONT.webp,TM-COAT-001,,verified filename; unmatched
+assets/COLLEGE _TM/COL_TM_Pants_M.png,/images/products/showcase/TM-PANT-001-FRONT.webp,TM-PANT-001,,verified filename; unmatched
+assets/COLLEGE _TM/COL_TM_Scarf.jpg,/images/products/showcase/TM-SCRF-001-FRONT.webp,TM-SCRF-001,,verified filename; unmatched
+assets/COLLEGE _TM/COL_TM_Skirt_F.png,/images/products/showcase/TM-SKRT-001-FRONT.webp,TM-SKRT-001,,verified filename; unmatched
+assets/COLLEGE _TM/COL_TM_Vest_F.png,/images/products/showcase/TM-VEST-001-F-FRONT.webp,TM-VEST-001,,exact duplicate of Vest_M; review labels
+assets/COLLEGE _TM/COL_TM_Vest_M.png,/images/products/showcase/TM-VEST-001-M-FRONT.webp,TM-VEST-001,,exact duplicate of Vest_F; review labels
+assets/COLLEGE_HM/COL_HM_Blazer_F.png,/images/products/showcase/HM-BLAZ-001-F-FRONT.webp,HM-BLAZ-001,,exact duplicate of Coat_M; review labels
+assets/COLLEGE_HM/COL_HM_Coat_M.png,/images/products/showcase/HM-BLAZ-001-M-FRONT.webp,HM-BLAZ-001,,exact duplicate of Blazer_F; review labels
+assets/COLLEGE_HM/COL_HM_Pants_M.png,/images/products/showcase/HM-PANT-001-FRONT.webp,HM-PANT-001,,verified filename; unmatched
+assets/COLLEGE_HM/COL_HM_Skirt_F.png,/images/products/showcase/HM-SKRT-001-FRONT.webp,HM-SKRT-001,,verified filename; unmatched
+assets/COLLEGE_HM/COL_HM_Top_F.png,/images/products/showcase/HM-TOP-001-FRONT.webp,HM-TOP-001,,verified filename; unmatched
+assets/COLLEGE_HM/COL_HM_Top_M.png,/images/products/showcase/HM-TOP-002-FRONT.webp,HM-TOP-002,,verified filename; unmatched
+assets/COLLEGE_HM/COL_HM_Vest_F.png,/images/products/showcase/HM-VEST-001-F-FRONT.webp,HM-VEST-001,,exact duplicate of Vest_M; review labels
+assets/COLLEGE_HM/COL_HM_Vest_M.png,/images/products/showcase/HM-VEST-001-M-FRONT.webp,HM-VEST-001,,exact duplicate of Vest_F; review labels
+assets/COLLEGE_PSYCH/COL_Psych_Pants_F.png,/images/products/showcase/PSY-PANT-001-F-FRONT.webp,PSY-PANT-001,,exact duplicate of Pants_M; review labels
+assets/COLLEGE_PSYCH/COL_Psych_Pants_M.png,/images/products/showcase/PSY-PANT-001-M-FRONT.webp,PSY-PANT-001,,exact duplicate of Pants_F; review labels
+assets/COLLEGE_PSYCH/COL_Psych_Skirt_F.png,/images/products/showcase/PSY-SKRT-001-FRONT.webp,PSY-SKRT-001,,verified filename; unmatched
+assets/COLLEGE_PSYCH/COL_Psych_Top_F.png,/images/products/showcase/PSY-TOP-001-FRONT.webp,PSY-TOP-001,,verified filename; unmatched
+assets/COLLEGE_PSYCH/COL_Psych_Top_M.png,/images/products/showcase/PSY-TOP-002-FRONT.webp,PSY-TOP-002,,verified filename; unmatched
+assets/COLLEGE_TRAD/COL_Trad_Pants_F.png,/images/products/showcase/TRAD-PANT-001-F-COL-FRONT.webp,TRAD-PANT-001,,duplicate across four COL/SHS labels; review department
+assets/COLLEGE_TRAD/COL_Trad_Pants_M.png,/images/products/showcase/TRAD-PANT-001-M-COL-FRONT.webp,TRAD-PANT-001,,duplicate across four COL/SHS labels; review department
+assets/COLLEGE_TRAD/COL_Trad_Skirt_F.png,/images/products/showcase/TRAD-SKRT-001-FRONT.webp,TRAD-SKRT-001,,verified filename; unmatched
+assets/COLLEGE_TRAD/COL_Trad_Top_F.png,/images/products/showcase/TRAD-TOP-001-FRONT.webp,TRAD-TOP-001,,verified filename; unmatched
+assets/COLLEGE_TRAD/COL_Trad_Top_M.png,/images/products/showcase/TRAD-TOP-002-FRONT.webp,TRAD-TOP-002,,verified filename; unmatched
+assets/OTHERS/cap 1.jpg,/images/products/showcase/MER-CAP-002-FRONT.webp,MER-CAP-002,,photo; unmatched
+assets/OTHERS/MER_CAP.png,/images/products/approved/MER-CAP-001-FRONT.webp,MER-CAP-001,BX-CAP,visually verified: navy embroidered cap; front/three-quarter; approved mapping
+assets/OTHERS/MER_HANDYFAN.png,/images/products/showcase/MER-FAN-001-FRONT.webp,MER-FAN-001,,verified filename; unmatched
+assets/OTHERS/MER_JACKET.png,/images/products/showcase/MER-JCKT-001-FRONT.webp,MER-JCKT-001,,verified filename; unmatched
+assets/OTHERS/MER_LEDFAN.png,/images/products/showcase/MER-FAN-002-FRONT.webp,MER-FAN-002,,verified filename; unmatched
+assets/OTHERS/MER_SHIRT.png,/images/products/approved/MER-TSH-001-FRONT.webp,MER-TSH-001,BX-SHIRT,visually verified: navy Bulldogs graphic tee; front; approved mapping
+assets/OTHERS/MER_TOTE.png,/images/products/approved/MER-TOTE-001-FRONT.webp,MER-TOTE-001,BX-TOTE,visually verified: cream Bulldogs canvas tote; front; approved mapping
+assets/OTHERS/NSTP_SHIRT.png,/images/products/showcase/NSTP-TSH-001-FRONT.webp,NSTP-TSH-001,,verified filename; unmatched
+assets/OTHERS/nu cap 2.jpg,/images/products/showcase/MER-CAP-003-FRONT.webp,MER-CAP-003,,photo; unmatched
+assets/OTHERS/nu cup 1.jpg,/images/products/showcase/MER-CUP-001-FRONT.webp,MER-CUP-001,,photo angle/design grouping requires review
+assets/OTHERS/nu cup 2.jpg,/images/products/showcase/MER-CUP-002-FRONT.webp,MER-CUP-002,,photo angle/design grouping requires review
+assets/OTHERS/nu merch 2.jpg,/images/products/showcase/MER-TSH-002-FRONT.webp,MER-TSH-002,,photo; unmatched
+assets/OTHERS/nu merch 3.jpg,/images/products/showcase/MER-TSH-003-FRONT.webp,MER-TSH-003,,photo; unmatched
+assets/OTHERS/nu merch 5.jpg,/images/products/showcase/MER-TSH-004-FRONT.webp,MER-TSH-004,,photo; unmatched
+assets/OTHERS/nu merch 6.jpg,/images/products/showcase/MER-TSH-005-FRONT.webp,MER-TSH-005,,photo; unmatched
+assets/OTHERS/nu merch 7.jpg,/images/products/showcase/MER-TSH-006-FRONT.webp,MER-TSH-006,,photo; unmatched
+assets/OTHERS/nu tote bag 1.jpg,/images/products/showcase/MER-TOTE-002-FRONT.webp,MER-TOTE-002,,photo; unmatched
+assets/OTHERS/nu tote bag 2.jpg,/images/products/showcase/MER-TOTE-003-FRONT.webp,MER-TOTE-003,,photo; unmatched
+assets/OTHERS/nu tote bag 3.jpg,/images/products/showcase/MER-TOTE-004-FRONT.webp,MER-TOTE-004,,photo; unmatched
+assets/OTHERS/PE_PANTS.png,/images/products/showcase/PE-PANT-001-FRONT.webp,PE-PANT-001,,verified filename; unmatched
+assets/OTHERS/PE_SHIRT.png,/images/products/showcase/PE-TSH-001-FRONT.webp,PE-TSH-001,,verified filename; unmatched
+assets/OTHERS/PE_SWEATSHIRT.png,/images/products/showcase/PE-SWT-001-FRONT.webp,PE-SWT-001,,verified filename; unmatched
+assets/SHS/SHS_Trad_Pants_F.png,/images/products/showcase/TRAD-PANT-001-F-SHS-FRONT.webp,TRAD-PANT-001,,duplicate across four COL/SHS labels; review department
+assets/SHS/SHS_Trad_Pants_M.png,/images/products/showcase/TRAD-PANT-001-M-SHS-FRONT.webp,TRAD-PANT-001,,duplicate across four COL/SHS labels; review department
+assets/SHS/SHS_Trad_Top_F.png,/images/products/showcase/SHS-TOP-001-FRONT.webp,SHS-TOP-001,,verified filename; unmatched
+assets/SHS/SHS_Trad_Top_M.png,/images/products/showcase/SHS-TOP-002-FRONT.webp,SHS-TOP-002,,verified filename; unmatched

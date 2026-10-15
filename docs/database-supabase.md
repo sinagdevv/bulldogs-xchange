@@ -2,9 +2,9 @@
 
 Supabase Postgres is the normalized SQL operational database used for deployment. It is PostgreSQL, not Microsoft SQL Server. The validated SQL Server provider remains available for local compatibility; both providers use the backend repository and transaction services.
 
-The browser security boundary is `Frontend -> Vercel API -> Supabase Postgres`. The browser has no operational table-write path, database password, or service-role key. Auth0 remains the identity provider: a verified Auth0 email maps to `dbo.users.email`; unknown and inactive users receive `403`, and the database role is authoritative.
+The browser security boundary is `Frontend -> Vercel API -> Supabase Postgres`. The browser has no operational table-write path, database password, or service-role key. Supabase Auth email OTP provides identity: a verified email maps to `dbo.users.email`; unknown and inactive users receive `403`, and the database role is authoritative.
 
-Use Supabase's transaction-mode pooler URL for Vercel serverless functions, set it as `SUPABASE_DATABASE_URL`, set `POSTGRES_SSL=true`, and set `SUPABASE_CA_CERT_PATH=certs/supabase-prod-ca-2021.crt`. The checked-in public CA is the certificate downloaded from the project's Supabase Database Settings; the driver keeps certificate and hostname verification enabled. Run `npm run db:pg:schema`, `npm run db:pg:seed`, and `npm run db:pg:integrity`. Demo `.test` identities are data fixtures and cannot be used for live Auth0 login.
+Use Supabase's transaction-mode pooler URL for Vercel serverless functions, set it as `SUPABASE_DATABASE_URL`, set `POSTGRES_SSL=true`, and set `SUPABASE_CA_CERT_PATH=certs/supabase-prod-ca-2021.crt`. The checked-in public CA is the certificate downloaded from the project's Supabase Database Settings; the driver keeps certificate and hostname verification enabled. Run `npm run db:pg:schema`, `npm run db:pg:seed`, and `npm run db:pg:integrity`. Demo `.test` identities are isolated fixtures and cannot be used for live Supabase login.
 
 ```mermaid
 erDiagram

@@ -1,33 +1,36 @@
-# Production authentication
+# Institutional email authentication and approval
 
-Bulldogs Xchange uses a provider-independent OIDC bearer-token boundary:
+Bulldogs Xchange accepts only verified NU Fairview institutional email addresses:
 
-`Web/PWA → OIDC provider (Authorization Code + PKCE) → Bearer access token → Vercel API → JWT/JWKS validation → SQL Users lookup → role authorization`
+`Institutional email + password → Vercel API → Supabase signup + verification email → verified JWT → SQL approval + role authorization`
 
-This fits Vercel without requiring Microsoft Entra or NU tenant administration. Auth0 is the initial provider; the boundary remains standard OIDC. The API uses `jose` to validate the token signature, issuer, audience, expiry, and RS256 algorithm against the provider's HTTPS JWKS. The token must contain `sub`, `email`, and `email_verified: true`; configure the Auth0 API token to include those identity claims. The normalized verified email maps to `dbo.Users.Email`; `IsActive` and the authoritative Customer/Staff/Admin role always come from SQL Server. Unknown users are not automatically created, and provider role metadata is ignored.
+The accepted domains are `students.nu-fairview.edu.ph` and `nu-fairview.edu.ph`. Domain eligibility never grants a role. The hosted demo's four identities all use the student domain; Staff/Admin assignment still requires explicit SQL approval. The browser never receives the private alias or service-role key. Passwords pass through the TLS-protected API only to Supabase Auth and are never stored or logged by the application. New registrations are always `Customer` / `pending`; every protected request reloads the user's approval and role from SQL, so rejection or suspension takes effect without waiting for the JWT to expire.
 
-The frontend should use Auth0 Authorization Code with PKCE, keep access tokens in memory rather than local storage, send them only in the `Authorization: Bearer ...` header, and use Auth0's logout/end-session operation. Logout clears the browser/provider session and the frontend token; a previously issued stateless access token remains valid only until its configured short expiry. The API has no password or refresh-token endpoint and therefore no brute-forceable local login surface; MFA, credential recovery, rate limiting, and session controls remain Auth0's responsibility. Access-token lifetime is configured at the provider and enforced through the token `exp` claim.
+## Required deployment actions
 
-`GET /api/session` deterministically returns either `{ authenticated: false, user: null }` or safe SQL-backed user fields. It never returns raw tokens, provider metadata, secrets, or credentials. Because authentication uses a non-cookie bearer token, CSRF tokens are not required. Browser CORS is restricted to the exact `FRONTEND_ORIGIN`; wildcard credentialed access is not used.
+1. Review and explicitly approve `supabase/migrations/20261014090000_verified_institutional_email_auth.sql`; do not apply it to the protected project.
+2. Set `SUPABASE_URL`, `SUPABASE_PROJECT_REF`, `SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` in the server environment. The secret key is used only for compensating cleanup if the SQL transaction fails. Never expose it as a `VITE_` variable.
+3. In Supabase Authentication, enable email/password sign-in and **Confirm email**. Configure the Site URL and redirect allowlist for the exact hosted-demo HTTPS origin.
+4. Keep the **Before User Created** hook configured as `public.hook_restrict_bulldogs_signup`; the new migration permits only the two reviewed institutional domains.
+5. Verify existing Staff/Admin rows were migrated to `approved`. Existing Customer rows intentionally become `pending` and must be reviewed rather than silently approved.
+6. Set `ENABLE_INSTITUTIONAL_EMAIL_REGISTRATION=true` only after the institutional-email migration and post-migration checks pass. It defaults to disabled; login is unaffected.
 
-## Environment
+## Initial Admin bootstrap
 
-Server-only:
+Run this local CLI before the approval migration when no active Admin exists. It uses the server-side service-role credential only to verify one immutable Supabase Auth UUID; it never changes Auth data.
 
-- `AUTH_ISSUER` — exact expected token issuer
-- `AUTH_AUDIENCE` — exact API audience
-- `AUTH_JWKS_URL` — HTTPS JWKS endpoint
+```powershell
+npm run auth:bootstrap-admin -- --project-ref=qyzwruvggwxbmqrurmxh --user-id=30 --auth-user-id=<AUTH_UUID> --email=<TARGET_EMAIL> --school-id=<STUDENT_ID> --confirm="PROMOTE <TARGET_EMAIL> TO INITIAL BULLDOGS XCHANGE ADMIN"
+```
 
-Non-secret server configuration:
+The command rejects a different project/database, Auth UUID or email, SQL user ID or Student ID, inactive/non-Customer target, incorrect confirmation, and any existing active Admin. Remove the service-role credential from the operator environment after use if it is not otherwise required there.
 
-- `FRONTEND_ORIGIN` — exact allowed Web/PWA origin
+Authentication endpoints use an atomic shared Upstash Redis counter in production. Configure `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, and a dedicated `AUTH_RATE_LIMIT_SECRET`; without shared-store credentials production login and registration fail closed with 503. Local development uses an in-memory store. Account and Vercel-provided client-IP identifiers are HMAC-hashed before storage; the API returns the same throttling response regardless of account existence.
 
-Local development only:
+`POST /api/auth/resend-verification` and `POST /api/auth/recovery` use the same limiter and return generic accepted responses. `PUT /api/auth/password` requires a valid Supabase recovery access token. Password changes never alter SQL approval or roles, and protected APIs independently require `email_confirmed_at` from Supabase.
 
-- `ENABLE_DEV_AUTH=true`
-- `DEV_AUTH_EMAIL`
-- optional `x-dev-user` header
+Password recovery redirects to the exact `FRONTEND_ORIGIN` plus `/auth/recovery`. The frontend consumes Supabase's `type=recovery` fragment once, immediately removes it from browser history, validates the OTP-authenticated session through `POST /api/auth/recovery-session`, and renders the password form only after validation. A successful password update globally revokes the recovery session.
 
-Development authentication throws a configuration error in production and never falls back to a demo identity. Production protected endpoints fail closed when credentials are absent, invalid, expired, or misconfigured.
+CAPTCHA is intentionally disabled for the four-account hosted demo. The institutional-domain hook, application HMAC rate limiter, generic recovery/resend responses, Supabase Auth limits, pending Admin approval, and custom SMTP quota provide proportionate protection. Reassess before broader enrollment or public promotion; enabling CAPTCHA requires a reviewed frontend challenge and server-forwarded provider token first.
 
-Microsoft Entra / NU SSO can later replace the authentication provider by changing OIDC configuration, or by implementing the small `AuthProvider` interface, without rewriting Bulldogs Xchange business services or authorization rules.
+Legacy `@auth.bulldogs-xchange.invalid` identities are rejected by the hosted login flow. If any real users were created under the previous alias design, migrate them only through a separately reviewed operator procedure; do not silently relink identities.

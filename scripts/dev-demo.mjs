@@ -1,0 +1,23 @@
+import { existsSync, readFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { createConnection } from "node:net";
+import { fileURLToPath } from "node:url";
+
+const root = fileURLToPath(new URL("..", import.meta.url)), envPath = new URL("../.env.local-demo", import.meta.url);
+if (!existsSync(envPath)) throw new Error("Missing .env.local-demo; demo mode will not use another environment.");
+const values = Object.fromEntries(readFileSync(envPath, "utf8").split(/\r?\n/).filter(line => line && !line.startsWith("#")).map(line => line.split(/=(.*)/s, 2)));
+if (values.DATA_PROVIDER !== "postgres" || values.PORT !== "4317" || !values.SUPABASE_DATABASE_URL?.includes("127.0.0.1:55432")) throw new Error(".env.local-demo must target PostgreSQL at 127.0.0.1:55432 on API port 4317.");
+const npmCli = process.env.npm_execpath;
+if (!npmCli) throw new Error("Start demo mode with npm run dev:demo so npm's CLI path is available.");
+const docker = spawnSync("docker", ["compose", "-f", "docker-compose.financial-staging.yml", "up", "-d", "--wait"], { cwd: root, stdio: "inherit" });
+if (docker.status !== 0) throw new Error("Docker demo PostgreSQL did not become healthy; start Docker Desktop and retry.");
+const env = { ...process.env, ...values };
+const portOpen = port => new Promise(resolve => { const socket = createConnection({ host: "127.0.0.1", port }); socket.once("connect", () => { socket.destroy(); resolve(true); }).once("error", () => resolve(false)); });
+const options = { cwd: root, env, stdio: "inherit" };
+const runNpm = args => spawn(process.execPath, [npmCli, ...args], options);
+const children = [runNpm(["run", "dev:demo:api"])];
+if (await portOpen(5173)) console.log("Vite already listening on http://localhost:5173; reusing it.");
+else children.push(runNpm(["--prefix", "frontend", "run", "dev"]));
+const stop = () => children.forEach(child => child.kill());
+process.once("SIGINT", stop).once("SIGTERM", stop);
+children.forEach(child => child.once("exit", code => { if (code && !process.exitCode) process.exitCode = code; }));

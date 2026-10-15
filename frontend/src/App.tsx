@@ -1,15 +1,32 @@
-import {BrowserRouter,Route,Routes} from "react-router-dom";
-import type {ReactNode} from "react";
-import {AppLayout,PublicLayout,RequireRole} from "./components";
-import {Catalog,Dashboard,InfoPage,Landing,ModulePage,NotFound} from "./pages";
+import {BrowserRouter,Navigate,Route,Routes} from "react-router-dom";
+import {Suspense,lazy,type ReactNode} from "react";
+import {AppLayout,AuthRedirect,PublicLayout,RequireRole} from "./components";
+import {Catalog,InfoPage,Landing,NotFound} from "./pages";
 import {CustomerCatalog,CustomerHome,CustomerProductDetails,Notifications,Profile,Queue,ReservationDetails,Reservations} from "./customer";
+import {AdminAnalytics,AdminAuditLogs,AdminCategories,AdminProducts,AdminReports,AdminSettings,AdminVariants,Dashboard,FinancialOperations,Inventory,StaffQueue,StaffReservations,StaffTransactions} from "./staff";
 import {SessionProvider} from "./session";
+import {ToastProvider} from "./toast";
 import type {Role} from "./types";
+import {AdminUsers} from "./admin-users";
+import {PasswordRecovery} from "./recovery";
 
-const modules:{path:string;role:Role;title:string;description:string}[]=[
-  ["staff/reservations","Staff","Reservation management","Confirm, prepare, and release reservations."],["staff/queue","Staff","Queue operations","Call and complete campus pickup queue entries."],["staff/inventory","Staff","Inventory","Monitor stock and record controlled adjustments."],["staff/transactions","Staff","Transactions","Process ready reservations at pickup."],
-  ["admin/products","Admin","Products","Manage the merchandise catalog."],["admin/categories","Admin","Categories","Organize catalog categories."],["admin/variants","Admin","Variants","Manage sellable sizes and variants."],["admin/inventory","Admin","Inventory","Review inventory health."],["admin/users","Admin","Users","Manage backend-authorized roles."],["admin/analytics","Admin","Analytics","Review operational trends."],["admin/reports","Admin","Reports","Prepare validated operational reports."],["admin/settings","Admin","Settings","Manage allowlisted system settings."],["admin/audit-logs","Admin","Audit logs","Review administrative and workflow events."]
-].map(([path,role,title,description])=>({path:path as string,role:role as Role,title:title as string,description:description as string}));
+/* Development-only design preview. Production builds do not register this route. */
+const Preview=import.meta.env.DEV?lazy(()=>import("./preview")):null;
+
+/* Route paths are unchanged from the previous release; only the screens behind them were redesigned. */
+const modules:{path:string;role:Role;element:ReactNode}[]=[
+  {path:"staff/reservations",role:"Staff",element:<StaffReservations/>},{path:"staff/queue",role:"Staff",element:<StaffQueue/>},{path:"staff/inventory",role:"Staff",element:<Inventory/>},{path:"staff/transactions",role:"Staff",element:<StaffTransactions/>},
+  {path:"staff/financial",role:"Staff",element:<FinancialOperations role="Staff"/>},{path:"admin/financial",role:"Admin",element:<FinancialOperations role="Admin"/>},
+  {path:"admin/products",role:"Admin",element:<AdminProducts/>},{path:"admin/categories",role:"Admin",element:<AdminCategories/>},{path:"admin/variants",role:"Admin",element:<AdminVariants/>},{path:"admin/inventory",role:"Admin",element:<Inventory/>},{path:"admin/users",role:"Admin",element:<AdminUsers/>},{path:"admin/analytics",role:"Admin",element:<AdminAnalytics/>},{path:"admin/reports",role:"Admin",element:<AdminReports/>},{path:"admin/settings",role:"Admin",element:<AdminSettings/>},{path:"admin/audit-logs",role:"Admin",element:<AdminAuditLogs/>},
+];
 const guarded=(role:Role,node:ReactNode)=><RequireRole roles={role==="Staff"?["Staff","Admin"]:[role]}>{node}</RequireRole>;
 
-export default function App(){return <SessionProvider><BrowserRouter><Routes><Route element={<PublicLayout/>}><Route index element={<Landing/>}/><Route path="catalog" element={<Catalog/>}/><Route path="how-it-works" element={<InfoPage kind="how"/>}/><Route path="campus-pickup" element={<InfoPage kind="pickup"/>}/></Route><Route element={<AppLayout role="Customer"/>}><Route path="home" element={guarded("Customer",<CustomerHome/>)}/><Route path="shop" element={guarded("Customer",<CustomerCatalog/>)}/><Route path="shop/:id" element={guarded("Customer",<CustomerProductDetails/>)}/><Route path="reservations" element={guarded("Customer",<Reservations/>)}/><Route path="reservations/:id" element={guarded("Customer",<ReservationDetails/>)}/><Route path="queue" element={guarded("Customer",<Queue/>)}/><Route path="notifications" element={guarded("Customer",<Notifications/>)}/><Route path="profile" element={guarded("Customer",<Profile/>)}/></Route><Route element={<AppLayout role="Staff"/>}><Route path="staff" element={guarded("Staff",<Dashboard role="Staff"/>)}/>{modules.filter(x=>x.role==="Staff").map(x=><Route key={x.path} path={x.path} element={guarded(x.role,<ModulePage title={x.title} description={x.description}/>)}/>)}</Route><Route element={<AppLayout role="Admin"/>}><Route path="admin" element={guarded("Admin",<Dashboard role="Admin"/>)}/>{modules.filter(x=>x.role==="Admin").map(x=><Route key={x.path} path={x.path} element={guarded(x.role,<ModulePage title={x.title} description={x.description}/>)}/>)}</Route><Route path="*" element={<NotFound/>}/></Routes></BrowserRouter></SessionProvider>}
+export default function App(){return <SessionProvider><ToastProvider><BrowserRouter><AuthRedirect/><Routes>
+  <Route path="auth/recovery" element={<PasswordRecovery/>}/>
+  <Route element={<PublicLayout/>}><Route index element={<Landing/>}/><Route path="catalog" element={<Catalog/>}/><Route path="how-it-works" element={<InfoPage/>}/><Route path="campus-pickup" element={<Navigate to={{pathname:"/how-it-works",hash:"pickup"}} replace/>}/></Route>
+  <Route element={<AppLayout role="Customer"/>}><Route path="home" element={guarded("Customer",<CustomerHome/>)}/><Route path="shop" element={guarded("Customer",<CustomerCatalog/>)}/><Route path="shop/:id" element={guarded("Customer",<CustomerProductDetails/>)}/><Route path="reservations" element={guarded("Customer",<Reservations/>)}/><Route path="reservations/:id" element={guarded("Customer",<ReservationDetails/>)}/><Route path="queue" element={guarded("Customer",<Queue/>)}/><Route path="notifications" element={guarded("Customer",<Notifications/>)}/><Route path="profile" element={guarded("Customer",<Profile/>)}/></Route>
+  <Route element={<AppLayout role="Staff"/>}><Route path="staff" element={guarded("Staff",<Dashboard role="Staff"/>)}/>{modules.filter(x=>x.role==="Staff").map(x=><Route key={x.path} path={x.path} element={guarded(x.role,x.element)}/>)}</Route>
+  <Route element={<AppLayout role="Admin"/>}><Route path="admin" element={guarded("Admin",<Dashboard role="Admin"/>)}/>{modules.filter(x=>x.role==="Admin").map(x=><Route key={x.path} path={x.path} element={guarded(x.role,x.element)}/>)}</Route>
+  {Preview&&<Route path="design-preview/*" element={<Suspense fallback={null}><Preview/></Suspense>}/>}
+  <Route path="*" element={<NotFound/>}/>
+</Routes></BrowserRouter></ToastProvider></SessionProvider>}

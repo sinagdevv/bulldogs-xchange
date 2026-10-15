@@ -54,6 +54,7 @@ try{
     await adminService.setVariantActive(variant.id,{isActive:true},admin);
     await adminService.changeUserRole(customer.id,{role:"Staff"},admin);
     await adminService.changeUserRole(customer.id,{role:"Customer"},admin);
+    await db.query("UPDATE dbo.Users SET IsActive=false WHERE RoleId=(SELECT RoleId FROM dbo.Roles WHERE RoleName=N'Admin') AND UserId<>@adminId",{adminId:Number(admin.id)});
     await assert.rejects(()=>adminService.changeUserRole(admin.id,{role:"Staff"},admin),code("LAST_ADMIN_PROTECTED"));
     const expiry=(await db.query("SELECT SettingValue value FROM dbo.SystemSettings WHERE SettingKey='ReservationExpiryDays'"))[0];
     await adminService.updateSetting("ReservationExpiryDays",{value:Number(expiry.value)+1},admin);
@@ -81,6 +82,7 @@ try{
     assert.ok(Number((await db.query("SELECT COUNT(*) count FROM dbo.AuditLogs WHERE UserId IN(@customer,@staff,@admin)",{customer:Number(customer.id),staff:Number(staff.id),admin:Number(admin.id)}))[0].count)>0);
     results.business={reservation,queue,sale};
 
+    process.env.POWER_AUTOMATE_DISPATCH_ENABLED="true";
     const dispatcher=new OutboxDispatcher(db,{notifyEvent:async()=>{throw new Error("synthetic delivery failure");}},()=>{});
     const claimable=(await db.query("SELECT EventId FROM dbo.AutomationOutbox WHERE Status='Pending' ORDER BY AutomationEventId LIMIT 1"))[0];
     assert.ok(claimable);

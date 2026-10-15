@@ -2,10 +2,15 @@ node_modules/
 dist/
 .vercel/
 .env*
+local-demo-credentials.txt
 !.env.example
+!.env.financial-staging.example
 coverage/
 *.log
 .serena/
 
 .vercel
 supabase/.temp/
+
+.vercel
+.env*

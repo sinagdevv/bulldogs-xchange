@@ -1,10 +1,9 @@
-import {createContext,useContext,useEffect,useMemo,useState,type ReactNode} from "react";
-import {createAuthAdapter} from "./auth";
+import {useContext,useEffect,useState,type ReactNode} from "react";
+import {createAuthAdapter,type Registration} from "./auth";
 import {ApiClient} from "./api";
+import {SessionContext} from "./session-context";
 import type {Session} from "./types";
-
-type SessionState={session:Session|null;loading:boolean;error:string|null;api:ApiClient;login():Promise<void>;logout():Promise<void>;reload():Promise<void>};
-const adapter=createAuthAdapter(),api=new ApiClient(adapter),noop=async()=>{},Context=createContext<SessionState>({session:null,loading:true,error:null,api,login:noop,logout:noop,reload:noop});
-export function SessionProvider({children}:{children:ReactNode}){const[session,setSession]=useState<Session|null>(null),[error,setError]=useState<string|null>(null);const reload=async()=>{setError(null);try{setSession(await api.session())}catch(e){setError(e instanceof Error?e.message:"Session unavailable.")}};useEffect(()=>{const controller=new AbortController();api.session(controller.signal).then(setSession).catch(e=>{if(e.name!=="AbortError")setError(e instanceof Error?e.message:"Session unavailable.")});return()=>controller.abort()},[]);const value=useMemo(()=>({session,loading:!session&&!error,error,api,login:()=>adapter.login(),logout:()=>adapter.logout(),reload}),[session,error]);return <Context.Provider value={value}>{children}</Context.Provider>}
+const adapter=createAuthAdapter(),api=new ApiClient(adapter);
+export function SessionProvider({children}:{children:ReactNode}){const[session,setSession]=useState<Session|null>(null),[error,setError]=useState<string|null>(null),[authOpen,setAuthOpen]=useState(false),[authMode,setAuthMode]=useState<"login"|"register">("login"),[loginCount,setLoginCount]=useState(0);const reload=async()=>{setError(null);try{setSession(await api.session())}catch(e){setError(e instanceof Error?e.message:"Session unavailable.")}};useEffect(()=>{const controller=new AbortController();api.session(controller.signal).then(setSession).catch(e=>{if(e.name!=="AbortError")setError(e instanceof Error?e.message:"Session unavailable.")});return()=>controller.abort()},[]);const value={session,loading:!session&&!error,error,authOpen,authMode,loginCount,api,openAuth:(mode:"login"|"register"="login")=>{setAuthMode(mode);setAuthOpen(true)},login:async(email:string,password:string)=>{await adapter.login(email,password);await reload();setAuthOpen(false);setLoginCount(n=>n+1)},register:async(input:Registration)=>{await adapter.register(input);setAuthOpen(false);setSession({authenticated:false,user:null,registrationPending:true})},requestPasswordReset:(email:string)=>adapter.requestPasswordReset(email),closeAuth:()=>setAuthOpen(false),logout:async()=>{try{await adapter.logout();setError(null)}catch(e){setError("Signed out locally; server session revocation failed.");throw e}finally{setSession({authenticated:false,user:null})}},reload};return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>}
 // eslint-disable-next-line react-refresh/only-export-components
-export const useSession=()=>useContext(Context);
+export const useSession=()=>useContext(SessionContext);

@@ -3,7 +3,7 @@ export interface SharePointRepository {
   getCategories(): Promise<Category[]>; getProducts(): Promise<Product[]>; getProductById(id: string): Promise<Product | undefined>;
   getVariants(): Promise<ProductVariant[]>; getVariantsByProductId(productId: string): Promise<ProductVariant[]>;
   getInventory(): Promise<Inventory[]>; getInventoryByVariantId(variantId: string): Promise<Inventory | undefined>; getInventoryByProductId(productId: string): Promise<Inventory[]>;
-  getUsers(): Promise<User[]>; getUserByEmail(email: string): Promise<User | undefined>; getUserBySchoolId(schoolId: string): Promise<User | undefined>;
+  getUsers(): Promise<User[]>; getUserByEmail(email: string): Promise<User | undefined>; getUserBySchoolId(schoolId: string): Promise<User | undefined>; getUserByAuthSubject(subject: string): Promise<User | undefined>;
   getReservations(): Promise<Reservation[]>; getReservationById(id: string): Promise<Reservation | undefined>; getReservationsByCustomerEmail(email: string): Promise<Reservation[]>;
   getReservationItems(): Promise<ReservationItem[]>; getReservationItemsByReservationId(reservationId: string): Promise<ReservationItem[]>;
   getQueues(): Promise<QueueRecord[]>; getQueueById(id: string): Promise<QueueRecord | undefined>; getQueuesByCustomerEmail(email: string): Promise<QueueRecord[]>;

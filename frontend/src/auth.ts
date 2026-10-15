@@ -1,30 +1,24 @@
-import type {Role,User} from "./types";
-import {createAuth0Client,type Auth0Client} from "@auth0/auth0-spa-js";
-
-export interface AuthAdapter{getAccessToken(signal?:AbortSignal):Promise<string|null>;getFixtureUser():User|null;login():Promise<void>;logout():Promise<void>}
-export const fixtureAuthMode=import.meta.env.DEV&&import.meta.env.VITE_ENABLE_FIXTURE_AUTH==="true";
-type Auth0Bridge={getAccessTokenSilently(options?:{authorizationParams?:Record<string,string>}):Promise<string>;loginWithRedirect(options?:unknown):Promise<void>;logout(options?:unknown):Promise<void>};
-declare global{interface Window{bulldogsAuth0?:Auth0Bridge}}
-
-export class Auth0Adapter implements AuthAdapter{
-  private client?:Promise<Auth0Client>;
-  constructor(private bridge:Auth0Bridge|undefined=window.bulldogsAuth0){const domain=import.meta.env.VITE_AUTH0_DOMAIN,clientId=import.meta.env.VITE_AUTH0_CLIENT_ID,audience=import.meta.env.VITE_AUTH0_AUDIENCE;if(!bridge&&domain&&clientId&&audience)this.client=createAuth0Client({domain,clientId,cacheLocation:"memory",useRefreshTokens:false,authorizationParams:{audience,redirect_uri:window.location.origin}}).then(async client=>{if(location.search.includes("code=")&&location.search.includes("state=")){await client.handleRedirectCallback();history.replaceState({},document.title,location.pathname);}return client;});}
-  private async auth0(){return this.bridge??await this.client;}
-  async getAccessToken(){if(this.bridge)return this.bridge.getAccessTokenSilently();const client=await this.client;return client&&await client.isAuthenticated()?await client.getTokenSilently()??null:null;}
-  async login(){const client=await this.auth0();if(!client)throw new Error("Auth0 is not configured.");await client.loginWithRedirect({authorizationParams:{audience:import.meta.env.VITE_AUTH0_AUDIENCE,redirect_uri:window.location.origin}});}
-  async logout(){const client=await this.auth0();if(client)await client.logout({logoutParams:{returnTo:window.location.origin}});}
+import type {User} from "./types";
+import {isStaticPreview,previewUnavailable} from "./deployment-mode";
+import {createFixtureAuthAdapter,fixtureAuthMode} from "./fixture-auth-runtime";
+export interface Registration{email:string;studentId:string;fullName:string;password:string;confirmPassword:string}
+export interface AuthAdapter{getAccessToken(signal?:AbortSignal):Promise<string|null>;getFixtureUser():User|null;login(email:string,password:string):Promise<void>;register(input:Registration):Promise<void>;requestPasswordReset(email:string):Promise<void>;logout():Promise<void>}
+type Envelope<T>={success:boolean;data?:T;error?:{message:string}};
+export class SupabaseAuthAdapter implements AuthAdapter{
+  private accessToken:string|null=null;
+  private expiresAt=0;
+  private restoreAttempted=false;
+  private refreshPromise:Promise<string|null>|null=null;
+  constructor(private baseUrl=import.meta.env.VITE_API_BASE_URL??"/api"){}
+  async getAccessToken(){if(isStaticPreview)return null;if(this.accessToken&&Date.now()<this.expiresAt-30_000)return this.accessToken;if(this.refreshPromise)return this.refreshPromise;if(!this.accessToken&&this.restoreAttempted)return null;this.restoreAttempted=true;return this.refreshPromise=this.refresh().finally(()=>{this.refreshPromise=null});}
+  async login(email:string,password:string){if(isStaticPreview)throw new Error(previewUnavailable);const data=await this.post<{accessToken:string;expiresIn:number}>("auth/login",{email,password});this.setSession(data);}
+  async register(input:Registration){if(isStaticPreview)throw new Error(previewUnavailable);await this.post("auth/register",input);}
+  async requestPasswordReset(email:string){if(isStaticPreview)throw new Error(previewUnavailable);await this.post("auth/recovery",{email});}
+  async logout(){try{if(!isStaticPreview)await this.post("auth/logout",undefined,this.accessToken?{authorization:`Bearer ${this.accessToken}`}:{})}finally{this.accessToken=null;this.expiresAt=0;this.restoreAttempted=true;}}
   getFixtureUser(){return null;}
+  private async refresh(){try{const data=await this.post<{accessToken:string;expiresIn:number}>("auth/refresh");this.setSession(data);return data.accessToken}catch{this.accessToken=null;this.expiresAt=0;return null}}
+  private setSession(data:{accessToken:string;expiresIn:number}){this.accessToken=data.accessToken;this.expiresAt=Date.now()+data.expiresIn*1000;this.restoreAttempted=true;}
+  private async post<T=unknown>(path:string,body?:unknown,extraHeaders:Record<string,string>={}){if(isStaticPreview)throw new Error(previewUnavailable);const headers={"accept":"application/json",...extraHeaders,...(body===undefined?{}:{"content-type":"application/json"})},response=await fetch(`${this.baseUrl}/${path}`,{method:"POST",credentials:"same-origin",headers,body:body===undefined?undefined:JSON.stringify(body)}),payload=await response.json().catch(()=>null) as Envelope<T>|null;if(!response.ok||!payload?.success)throw new Error(payload?.error?.message??(response.status>=500?"Authentication service is unavailable. Check that the local API is running.":"The request could not be completed."));return payload.data as T;}
 }
-
-class FixtureAuthAdapter implements AuthAdapter{
-  private user:User={id:"fixture-customer",email:"customer@example.test",displayName:"Alex Bulldog",role:(import.meta.env.VITE_FIXTURE_ROLE??"Customer") as Role,department:"NU Fairview"};
-  async getAccessToken(){return null;}
-  async login(){}
-  async logout(){}
-  getFixtureUser(){return this.user;}
-}
-
-export function createAuthAdapter():AuthAdapter{
-  if(fixtureAuthMode)return new FixtureAuthAdapter();
-  return new Auth0Adapter();
-}
+export {fixtureAuthMode};
+export function createAuthAdapter():AuthAdapter{return fixtureAuthMode?createFixtureAuthAdapter():new SupabaseAuthAdapter();}

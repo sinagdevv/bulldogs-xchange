@@ -18,7 +18,7 @@ npm run dev
 
 Set `ENABLE_DEV_AUTH=true` and `DEV_AUTH_EMAIL=customer@example.test` only for local testing. You may also send `x-dev-user` with one of the fake accounts. Never enable this in production.
 
-Production authentication validates provider-issued OIDC bearer tokens and maps their verified email to the SQL Users table; SQL remains authoritative for activation and roles. Configure `AUTH_ISSUER`, `AUTH_AUDIENCE`, `AUTH_JWKS_URL`, and `FRONTEND_ORIGIN`. See [Production authentication](docs/authentication.md).
+Production authentication uses institutional email and password through Supabase Auth, with SQL remaining authoritative for activation and roles. Refresh sessions use an HttpOnly cookie; public registration remains disabled unless `ENABLE_INSTITUTIONAL_EMAIL_REGISTRATION=true` is set deliberately. Configure the server-only Supabase and identity variables documented in [authentication](docs/authentication.md).
 
 Production defaults to `DATA_PROVIDER=supabase`; `postgres` is an alias. Configure `SUPABASE_DATABASE_URL` with the Supabase transaction pooler URL and `POSTGRES_SSL=true`. SQL Server remains selectable with `DATA_PROVIDER=sqlserver`; production never falls back to mock mode.
 
@@ -26,7 +26,8 @@ The transactional outbox has validated real Outlook delivery through `BX-NotifyE
 
 ## Scripts
 
-- `npm run dev` — local Vercel runtime
+- `npm run dev` — React/Vite frontend (http://localhost:5173)
+- `npm run dev:api` — local Vercel runtime for the API (http://localhost:4317; the frontend proxies `/api` to it)
 - `npm run typecheck` — TypeScript validation
 - `npm test` — focused business-rule tests
 - `npm run build` — compile the server functions
@@ -40,8 +41,8 @@ Routes use `{ success, data, reference, message }` or `{ success: false, error }
 
 ## Vercel
 
-Configure `DATA_PROVIDER=supabase`, `SUPABASE_DATABASE_URL`, `POSTGRES_SSL=true`, Auth0 values, and server-only automation secrets in Vercel. Vercel can reach Supabase's pooler; it cannot reach localhost SQL Server. Do not expose database credentials, service-role keys, or workflow URLs to browser code.
+Configure `DATA_PROVIDER=supabase`, `SUPABASE_DATABASE_URL`, `POSTGRES_SSL=true`, `SUPABASE_PROJECT_REF`, and server-only automation secrets in Vercel. Vercel can reach Supabase's pooler; it cannot reach localhost SQL Server. Do not expose database credentials, service-role keys, or workflow URLs to browser code.
 
 ## Deferred
 
-Production identity, CSV/Excel/PDF exports, scheduled reports, chatbot, and final frontend.
+Payment-policy decisions, scheduled reports, PDF exports, and chatbot functionality.

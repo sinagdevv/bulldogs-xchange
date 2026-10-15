@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/internal/reservations/expire", "schedule": "*/15 * * * *" },
+    { "path": "/api/internal/outbox/dispatch", "schedule": "*/5 * * * *" }
+  ]
+}

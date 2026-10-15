@@ -1,0 +1,16 @@
+import {useEffect,useState,type FormEvent} from "react";
+import {NavLink} from "react-router-dom";
+import {Brand} from "./brand";
+import {capturedRecoveryToken} from "./recovery-token";
+
+type State="checking"|"valid"|"invalid"|"saved";
+type Envelope<T>={success:boolean;data?:T;error?:{message?:string}};
+const apiBase=import.meta.env.VITE_API_BASE_URL??"/api";
+
+export function PasswordRecovery(){
+  const[token,setToken]=useState(capturedRecoveryToken);
+  const[state,setState]=useState<State>(token?"checking":"invalid"),[error,setError]=useState(""),[busy,setBusy]=useState(false);
+  useEffect(()=>{if(!token)return;const controller=new AbortController();fetch(`${apiBase}/auth/recovery-session`,{method:"POST",headers:{authorization:`Bearer ${token}`},signal:controller.signal}).then(async response=>{const body=await response.json().catch(()=>null) as Envelope<unknown>|null;if(!response.ok||!body?.success)throw new Error(body?.error?.message??"This recovery link is invalid or expired.");setState("valid")}).catch(reason=>{if(reason?.name!=="AbortError"){setToken(null);setState("invalid");setError(reason instanceof Error?reason.message:"This recovery link is invalid or expired.")}});return()=>controller.abort()},[token]);
+  const submit=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!token)return;const data=new FormData(event.currentTarget),password=String(data.get("password")),confirmPassword=String(data.get("confirmPassword"));if(password!==confirmPassword){setError("Passwords do not match.");return}setBusy(true);setError("");try{const response=await fetch(`${apiBase}/auth/password`,{method:"PUT",headers:{authorization:`Bearer ${token}`,"content-type":"application/json"},body:JSON.stringify({password,confirmPassword})}),body=await response.json().catch(()=>null) as Envelope<unknown>|null;if(!response.ok||!body?.success)throw new Error(body?.error?.message??"Password recovery failed.");setToken(null);setState("saved")}catch(reason){setError(reason instanceof Error?reason.message:"Password recovery failed.")}finally{setBusy(false)}};
+  return <main className="container page narrow"><section className="card auth-wrap recovery" aria-labelledby="recovery-title"><Brand size={52}/><h1 id="recovery-title">Reset your password</h1>{state==="checking"&&<p role="status">Validating your recovery link…</p>}{state==="invalid"&&<><p role="alert">{error||"This recovery link is invalid, expired, or already used."}</p><NavLink className="btn" to="/">Return to sign in</NavLink></>}{state==="saved"&&<><p role="status">Your password was changed. Sign in again with your institutional email.</p><NavLink className="btn" to="/">Continue to sign in</NavLink></>}{state==="valid"&&<form onSubmit={event=>void submit(event)}><p>Choose a new password for your verified institutional account.</p><label className="field"><span>New password</span><input name="password" type="password" minLength={10} maxLength={128} autoComplete="new-password" required/></label><label className="field"><span>Confirm new password</span><input name="confirmPassword" type="password" minLength={10} maxLength={128} autoComplete="new-password" required/></label>{error&&<p className="field-error" role="alert">{error}</p>}<button className="btn btn-lg" disabled={busy}>{busy?"Saving…":"Change password"}</button></form>}</section></main>;
+}

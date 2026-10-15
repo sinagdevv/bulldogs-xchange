@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: bulldogs_xchange_staging
+      POSTGRES_USER: bulldogs_staging
+      POSTGRES_PASSWORD: local-disposable-only
+    ports:
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bulldogs_staging -d bulldogs_xchange_staging"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - bulldogs_demo_postgres:/var/lib/postgresql/data
+
+volumes:
+  bulldogs_demo_postgres:

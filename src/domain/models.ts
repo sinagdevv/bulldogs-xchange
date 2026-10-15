@@ -1,5 +1,6 @@
 export type Role = "Customer" | "Staff" | "Admin";
-export type ReservationStatus = "Pending" | "Confirmed" | "Preparing" | "Ready for Pickup" | "Completed" | "Cancelled" | "Expired";
+export type ApprovalStatus = "pending" | "approved" | "rejected" | "suspended";
+export type ReservationStatus = "Pending" | "Pending Deposit" | "Confirmed" | "Preparing" | "Ready for Pickup" | "Completed" | "Cancelled" | "Expired";
 export type QueueType = "Express" | "Regular";
 export type QueueStatus = "Waiting" | "Serving" | "Skipped" | "Completed" | "Left";
 export type MovementType = "Reserve" | "Release" | "Sale" | "Adjust" | "Restock";
@@ -10,9 +11,11 @@ export interface Product { id: string; title: string; categoryId: string; sku: s
 export interface ProductVariant { id: string; productId: string; name: string; variantSku: string; isActive: boolean }
 export interface Inventory { productVariantId: string; physicalQuantity: number; reservedQuantity: number; reorderLevel: number }
 export interface Availability extends Inventory { availableQuantity: number; status: "Out of Stock" | "Low Stock" | "Healthy" }
-export interface User { id: string; email: string; displayName: string; schoolId?: string; department?: string; customerType?: string; role: Role; isActive: boolean }
+export interface User { id: string; email: string; displayName: string; schoolId?: string; department?: string; customerType?: string; role: Role; isActive: boolean; approvalStatus?: ApprovalStatus; rejectionReason?: string }
 export interface Reservation { id: string; reference: string; customerEmail: string; status: ReservationStatus; expiresAt: string; createdAt: string; updatedAt: string }
 export interface ReservationItem { id: string; reservationId: string; productVariantId: string; quantity: number; unitPrice: number }
+export interface ReservationLine extends ReservationItem { productId?: string; productName: string; productSku?: string; variantName: string; variantSku?: string; subtotal: number }
+export interface ReservationDetails extends Reservation { items: ReservationLine[]; totalAmount: number; queue?: Pick<QueueRecord,"queueNumber"|"status"|"queueType"> }
 export interface QueueRecord { id: string; queueNumber: string; customerEmail: string; reservationId?: string; queueType: QueueType; status: QueueStatus; queueDate: string }
 export interface Transaction { id: string; reference: string; reservationId?: string; customerEmail: string; staffEmail: string; totalAmount: number; status: string; paymentMethod: string; createdAt: string }
 export interface TransactionItem { id: string; transactionId: string; productVariantId: string; quantity: number; unitPrice: number }

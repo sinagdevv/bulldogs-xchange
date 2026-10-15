@@ -6,7 +6,7 @@ const operations = { createReservation: "PA_CREATE_RESERVATION_URL", cancelReser
 type Operation = keyof typeof operations;
 const connectionResponse = z.object({ success: z.literal(true), message: z.literal("Bulldogs Xchange API reachable") });
 const notificationResponse = z.object({ success: z.literal(true), eventId: z.string().uuid(), message: z.literal("Notification accepted.") });
-export type NotificationEvent = { eventId:string; eventType:"ReservationCreated"|"ReservationCancelled"|"ReservationReady"|"QueueCalled"|"TransactionCompleted"; occurredAt:string; recipient:{email:string;name:string}; data:Record<string,unknown> };
+export type NotificationEvent = { eventId:string; eventType:string; occurredAt:string; recipient:{email:string;name:string}; data:Record<string,unknown> };
 export class PowerAutomateClient {
   constructor(private http = new PowerAutomateHttpClient()) {}
   async testConnection() { const response = await this.http.request<Record<string, never>, unknown>("testConnection", process.env.PA_TEST_URL, {}); const parsed = connectionResponse.safeParse(response); if (!parsed.success) throw new AppError("EXTERNAL_SERVICE_ERROR", "Power Automate test response was invalid."); return parsed.data; }

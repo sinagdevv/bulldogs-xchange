@@ -44,7 +44,8 @@ try {
     (SELECT count(*)::int FROM dbo.automationoutbox WHERE (status='Delivered' AND deliveredat IS NULL) OR (status='DeadLetter' AND attempts<1) OR (status='Superseded' AND supersededat IS NULL) OR (status='Processing' AND lockedat IS NULL)) invalid_outbox,
     (SELECT count(*)::int FROM dbo.automationoutbox) outbox_rows`);
 
-  assert.equal(tables.length, 24);
+  assert.equal(tables.length, 25);
+  assert.ok(tables.some(({table_name})=>table_name==="approvalhistory"),"approvalhistory");
   for (const key of Object.keys(integrity).filter((key) => !["users", "active_admins", "outbox_rows"].includes(key))) assert.equal(integrity[key], 0, key);
   console.log(JSON.stringify({ connection, tables: tables.map((row) => row.table_name), constraints, references: references[0], integrity }, null, 2));
 } finally {

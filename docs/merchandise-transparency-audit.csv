@@ -1,0 +1,52 @@
+file,state,verdict,bg_removed_fraction,notes
+MER-CAP-001-FRONT.webp,already-alpha,keep-as-is,0,
+MER-TOTE-001-FRONT.webp,already-alpha,keep-as-is,0,
+MER-TSH-001-FRONT.webp,already-alpha,keep-as-is,0,
+HM-BLAZ-001-F-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+HM-BLAZ-001-M-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+HM-PANT-001-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+HM-SKRT-001-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+HM-TOP-001-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+HM-TOP-002-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+HM-VEST-001-F-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+HM-VEST-001-M-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+MER-CAP-002-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+MER-CAP-003-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+MER-CUP-001-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+MER-CUP-002-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+MER-FAN-001-FRONT.webp,already-alpha,keep-as-is,0,
+MER-FAN-002-FRONT.webp,already-alpha,keep-as-is,0,
+MER-JCKT-001-FRONT.webp,already-alpha,keep-as-is,0,
+MER-TOTE-002-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+MER-TOTE-003-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+MER-TOTE-004-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+MER-TSH-002-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+MER-TSH-003-FRONT.webp,opaque,rejected,,segmentation erased the white shirt; original kept
+MER-TSH-004-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+MER-TSH-005-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+MER-TSH-006-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+NSTP-TSH-001-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+PE-PANT-001-FRONT.webp,already-alpha,keep-as-is,0,
+PE-SWT-001-FRONT.webp,already-alpha,keep-as-is,0,
+PE-TSH-001-FRONT.webp,already-alpha,keep-as-is,0,
+PSY-PANT-001-F-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+PSY-PANT-001-M-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+PSY-SKRT-001-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+PSY-TOP-001-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+PSY-TOP-002-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+SHS-TOP-001-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+SHS-TOP-002-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+TM-BLAZ-001-FRONT.webp,already-alpha,keep-as-is,0,
+TM-COAT-001-FRONT.webp,already-alpha,keep-as-is,0,
+TM-PANT-001-FRONT.webp,already-alpha,keep-as-is,0,
+TM-SCRF-001-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+TM-SKRT-001-FRONT.webp,already-alpha,keep-as-is,0,
+TM-VEST-001-F-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+TM-VEST-001-M-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+TRAD-PANT-001-F-COL-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+TRAD-PANT-001-F-SHS-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+TRAD-PANT-001-M-COL-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+TRAD-PANT-001-M-SHS-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+TRAD-SKRT-001-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+TRAD-TOP-001-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
+TRAD-TOP-002-FRONT.webp,cutout-generated,reviewed-integrated,,rembg isnet-general-use with alpha matting; visually reviewed on navy; original kept
