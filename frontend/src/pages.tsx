@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useState} from "react";
 import {useProducts} from "./use-products";
 import {NavLink,useLocation} from "react-router-dom";
-import {Empty,ErrorState,PageHeader,ProductCard,ProductGridSkeleton} from "./components";
+import {Empty,ErrorState,PageHeader,ProductCard} from "./components";
 import {useSession} from "./session";
 import type {Category} from "./types";
 import {Icon} from "./icons";
@@ -22,12 +22,8 @@ export function Catalog(){const{api}=useSession(),{products,error,retry}=useProd
   return <section className="container page"><PageHeader eyebrow="Bulldogs collection" title="Campus merchandise" description="Browse the live catalog. Log in with an approved student account to choose sizes and reserve for campus pickup."/>
     <div className="toolbar"><label className="search"><span className="sr-only">Search merchandise</span><Icon name="search"/><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search merchandise or uniforms"/></label></div>
     {active.length>0&&<div className="chips toolbar-chips" role="group" aria-label="Filter by category"><button type="button" className="chip" aria-pressed={!category} onClick={()=>setCategory("")}>All</button>{active.map(c=><button type="button" key={c.id} className="chip" aria-pressed={category===c.id} onClick={()=>setCategory(c.id)}>{c.title}</button>)}</div>}
-    <section aria-label="Available merchandise">
-      <div className="catalog-live-head"><h2>Available to reserve</h2>{products&&<span className="badge success plain" aria-live="polite">{visible.length} item{visible.length===1?"":"s"}</span>}</div>
-      {error?<ErrorState message={error} onRetry={retry}/>:!products?<ProductGridSkeleton/>:visible.length?<div className="product-grid">{visible.map(p=><ProductCard key={p.id} product={p}/>)}</div>:<div className="notice" style={{marginBottom:24}}><Icon name="shop"/><p>No approved items{search?" match your search":""} right now. Explore the campus collection below.</p></div>}
-    </section>
-    {showCollection&&<section className="collection-section" aria-label="Campus collection preview">
-      <div className="section-head"><div><h2>Campus collection</h2><p>Program uniforms and official merchandise · coming soon to the Bulldogs Xchange.</p></div><span className="badge plain" style={{flexShrink:0}}>Collection preview</span></div>
+    {showCollection&&<section className="collection-section" aria-label="Campus collection">
+      <div className="section-head"><div><h2>Campus collection</h2><p>Program uniforms and official merchandise available at Bulldogs Xchange.</p></div></div>
       {collectionGroups.map(([cat,items])=><div key={cat} className="collection-category"><h3 className="collection-cat-title">{cat}</h3><div className="collection-grid">{items.map(item=><CatalogCollectionCard key={item.file} item={item}/>)}</div></div>)}
     </section>}
   </section>}

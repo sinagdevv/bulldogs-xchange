@@ -43,12 +43,8 @@ export function CustomerCatalog(){const{api}=useSession(),[query,setQuery]=useSt
   return <><PageHeader eyebrow="Shop" title="Campus merchandise" description="Live inventory for NU Fairview campus pickup. Select an item to choose a size and reserve."/>
     <div className="toolbar"><label className="search"><span className="sr-only">Search merchandise</span><Icon name="search"/><input type="search" value={term} onChange={e=>setTerm(e.target.value)} placeholder="Search merchandise or uniforms"/></label><label><span className="sr-only">Sort</span><select value={query.sort} onChange={e=>setQuery(q=>({...q,sort:e.target.value as CatalogQuery["sort"]}))}><option value="title">Sort: Name</option><option value="price">Price: low to high</option><option value="-price">Price: high to low</option></select></label></div>
     {active.length>0&&<div className="chips toolbar-chips" role="group" aria-label="Filter by category"><button type="button" className="chip" aria-pressed={!query.category} onClick={()=>setQuery(q=>({...q,category:""}))}>All</button>{active.map(c=><button type="button" key={c.id} className="chip" aria-pressed={query.category===c.id} onClick={()=>setQuery(q=>({...q,category:c.id}))}>{c.title}</button>)}</div>}
-    <section aria-label="Available merchandise">
-      <div className="catalog-live-head"><h2>Available to reserve</h2>{products&&<span className="badge success plain" aria-live="polite">{products.length} item{products.length===1?"":"s"}</span>}</div>
-      {error?<ErrorState message={error} onRetry={()=>setAttempt(a=>a+1)}/>:!products?<ProductGridSkeleton/>:products.length?<div className="product-grid">{products.map(p=><ProductCard key={p.id} product={p}/>)}</div>:<div className="notice" style={{marginBottom:24}}><Icon name="shop"/><p>No approved items{term?" match your search":""} right now. Explore the campus collection below.</p></div>}
-    </section>
-    {showCollection&&<section className="collection-section" aria-label="Campus collection preview">
-      <div className="section-head"><div><h2>Campus collection</h2><p>Program uniforms and official merchandise · coming soon to the Bulldogs Xchange.</p></div><span className="badge plain" style={{flexShrink:0}}>Collection preview</span></div>
+    {showCollection&&<section className="collection-section" aria-label="Campus collection">
+      <div className="section-head"><div><h2>Campus collection</h2><p>Program uniforms and official merchandise available at Bulldogs Xchange.</p></div></div>
       {collectionGroups.map(([cat,items])=><div key={cat} className="collection-category"><h3 className="collection-cat-title">{cat}</h3><div className="collection-grid">{items.map(item=><CollectionCard key={item.file} item={item}/>)}</div></div>)}
     </section>}</>}
 

@@ -114,3 +114,86 @@ export function AdminReports(){const{api}=useSession(),toast=useToast(),[busy,se
 export function AdminSettings(){const{api}=useSession(),settings=useLoad<SystemSetting[]>(s=>api.admin<SystemSetting[]>("settings",s));return <><PageHeader eyebrow="System" title="Settings" description="Allowlisted system settings currently applied by the backend."/><div className="notice" style={{marginBottom:20}}><Icon name="info"/><p>Settings are shown read-only here to prevent accidental changes during operations.</p></div><section className="panel flush"><Body state={settings} empty={<Empty icon="settings" message="No settings are configured."/>}>{list=><div className="table-wrap"><table><thead><tr><th>Setting</th><th>Value</th><th className="hide-sm">Last updated</th></tr></thead><tbody>{list.map(s=><tr key={s.key}><td className="mono">{s.key}</td><td><strong>{s.value}</strong></td><td className="hide-sm">{formatDateTime(s.updatedAt)}</td></tr>)}</tbody></table></div>}</Body></section></>}
 export function AdminAuditLogs(){const{api}=useSession(),logs=useLoad<AuditLog[]>(s=>api.admin<AuditLog[]>("audit-logs",s)),[search,setSearch]=useState(""),rows=(logs.data??[]).filter(l=>!search||`${l.userEmail} ${l.action} ${l.entity} ${l.details??""}`.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
   return <><PageHeader eyebrow="Insights" title="Audit logs" description="Who did what, and when. Approvals, role changes, stock changes, and pickups are all recorded." action={<button type="button" className="btn btn-secondary" onClick={logs.reload}><Icon name="refresh"/>Refresh</button>}/><div className="toolbar"><label className="search"><span className="sr-only">Search audit logs</span><Icon name="search"/><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search user, action, or entity"/></label></div><section className="panel flush"><Body state={{...logs,data:logs.data?rows:null}} empty={<Empty icon="history" message="No audit events match."/>}>{list=><div className="table-wrap"><table><thead><tr><th>When</th><th>User</th><th>Action</th><th className="hide-sm">Entity</th><th className="hide-sm">Details</th></tr></thead><tbody>{list.slice(0,300).map(l=><tr key={l.id}><td>{formatDateTime(l.createdAt)}</td><td>{l.userEmail}</td><td><span className="badge info plain">{l.action}</span></td><td className="hide-sm">{l.entity}</td><td className="hide-sm">{l.details??""}</td></tr>)}</tbody></table></div>}</Body></section></>}
+
+
+/* ---------------- Admin: Barky AI management ---------------- */
+interface BarkyFaq{id:number;question:string;answer:string;isActive:boolean;createdAt:string;updatedAt:string}
+interface BarkyInsights{totalSessions:number;totalMessages:number;last24h:number}
+export function AdminBarky(){
+  const{api}=useSession();
+  const toast=useToast();
+  const faqs=useLoad<BarkyFaq[]>(s=>api.request<BarkyFaq[]>("admin/barky/faq",{signal:s}));
+  const insights=useLoad<BarkyInsights>(s=>api.request<BarkyInsights>("admin/barky/insights",{signal:s}));
+  const[tab,setTab]=useState<"faq"|"insights">("faq");
+  const[editing,setEditing]=useState<BarkyFaq|null>(null);
+  const[adding,setAdding]=useState(false);
+  const[q,setQ]=useState("");const[a,setA]=useState("");const[saving,setSaving]=useState(false);
+  const[deleting,setDeleting]=useState<number|null>(null);
+  const openAdd=()=>{setAdding(true);setEditing(null);setQ("");setA("")};
+  const openEdit=(f:BarkyFaq)=>{setEditing(f);setAdding(false);setQ(f.question);setA(f.answer)};
+  const cancel=()=>{setAdding(false);setEditing(null);setQ("");setA("")};
+  const save=async()=>{
+    if(!q.trim()||!a.trim())return;
+    setSaving(true);
+    try{
+      if(editing){
+        await api.request(`admin/barky/faq/${editing.id}`,{method:"PUT",body:JSON.stringify({question:q.trim(),answer:a.trim(),isActive:editing.isActive})});
+        toast.push({tone:"success",title:"FAQ updated"});
+      }else{
+        await api.request("admin/barky/faq",{method:"POST",body:JSON.stringify({question:q.trim(),answer:a.trim()})});
+        toast.push({tone:"success",title:"FAQ created"});
+      }
+      cancel();faqs.reload();
+    }catch(e){toast.push({tone:"error",title:"Save failed",message:errorMessage(e)});}
+    finally{setSaving(false);}
+  };
+  const del=async(id:number)=>{
+    setDeleting(id);
+    try{
+      await api.request(`admin/barky/faq/${id}`,{method:"DELETE"});
+      toast.push({tone:"info",title:"FAQ deleted"});
+      faqs.reload();
+    }catch(e){toast.push({tone:"error",title:"Delete failed",message:errorMessage(e)});}
+    finally{setDeleting(null);}
+  };
+  const toggleActive=async(f:BarkyFaq)=>{
+    try{
+      await api.request(`admin/barky/faq/${f.id}`,{method:"PUT",body:JSON.stringify({question:f.question,answer:f.answer,isActive:!f.isActive})});
+      faqs.reload();
+    }catch(e){toast.push({tone:"error",title:"Update failed",message:errorMessage(e)});}
+  };
+  return <><PageHeader eyebrow="System" title="Barky AI" description="Manage Barky's FAQ knowledge base and monitor usage."/>
+    <div className="tabs" role="tablist">
+      <button type="button" role="tab" className="tab" aria-selected={tab==="faq"} onClick={()=>setTab("faq")}>FAQs</button>
+      <button type="button" role="tab" className="tab" aria-selected={tab==="insights"} onClick={()=>setTab("insights")}>Usage</button>
+    </div>
+    {tab==="faq"&&<>
+      <div className="toolbar" style={{marginBottom:16}}><button type="button" className="btn" onClick={openAdd}><Icon name="plus"/>Add FAQ</button></div>
+      {(adding||editing)&&<section className="panel" style={{marginBottom:20}}>
+        <h2>{editing?"Edit FAQ":"New FAQ"}</h2>
+        <div className="form-grid" style={{marginTop:16}}>
+          <label className="field"><span>Question</span><input type="text" value={q} onChange={e=>setQ(e.target.value)} placeholder="What uniforms does Bulldogs Xchange carry?"/></label>
+          <label className="field"><span>Answer</span><textarea rows={3} value={a} onChange={e=>setA(e.target.value)} placeholder="Answer…" style={{resize:"vertical"}}/></label>
+          <div className="row" style={{gap:10}}><button type="button" className="btn" disabled={saving||!q.trim()||!a.trim()} onClick={()=>void save()}>{saving?"Saving…":"Save"}</button><button type="button" className="btn btn-secondary" onClick={cancel}>Cancel</button></div>
+        </div>
+      </section>}
+      <section className="panel flush">
+        <Body state={faqs} empty={<Empty icon="info" message="No FAQs yet. Add one to help Barky answer common questions."/>}>
+          {list=><div className="table-wrap"><table><thead><tr><th>Question</th><th>Active</th><th className="act-col"><span className="sr-only">Actions</span></th></tr></thead>
+          <tbody>{list.map(f=><tr key={f.id}>
+            <td><strong>{f.question}</strong><small className="sub">{f.answer.slice(0,80)}{f.answer.length>80?"…":""}</small></td>
+            <td><button type="button" className={`badge ${f.isActive?"success":"warning"} plain`} onClick={()=>void toggleActive(f)} title={f.isActive?"Deactivate":"Activate"} style={{cursor:"pointer"}}>{f.isActive?"Active":"Inactive"}</button></td>
+            <td className="act-col" style={{display:"flex",gap:8}}><button type="button" className="btn btn-sm btn-secondary" onClick={()=>openEdit(f)}>Edit</button><button type="button" className="btn btn-sm btn-danger" disabled={deleting===f.id} onClick={()=>void del(f.id)}>{deleting===f.id?"…":"Delete"}</button></td>
+          </tr>)}</tbody></table></div>}
+        </Body>
+      </section>
+    </>}
+    {tab==="insights"&&<section className="panel">
+      {insights.error?<ErrorState message={insights.error} onRetry={insights.reload}/>:!insights.data?<RowsSkeleton/>:<dl className="detail-grid">
+        <div><dt>Total sessions</dt><dd>{insights.data.totalSessions}</dd></div>
+        <div><dt>Total messages (users)</dt><dd>{insights.data.totalMessages}</dd></div>
+        <div><dt>Messages last 24h</dt><dd>{insights.data.last24h}</dd></div>
+      </dl>}
+    </section>}
+  </>
+}

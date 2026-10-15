@@ -25,6 +25,7 @@ import {FinancialReportingService} from "./services/financial-reporting-service.
 import {toPdf,toXlsx,type ReportType} from "./services/report-export-service.js";
 import {PaymentEvidenceService} from "./services/payment-evidence-service.js";
 import {LocalAuth,LocalAuthProvider} from "./auth/local-demo-auth.js";
+import {BarkyService} from "./services/barky-service.js";
 
 export const repository = createRepository();
 const localDemo=process.env.LOCAL_DEMO==="true"&&process.env.DATA_PROVIDER==="postgres"&&process.env.SUPABASE_DATABASE_URL?.includes("127.0.0.1:55432/bulldogs_xchange_staging");
@@ -40,6 +41,7 @@ const deposits=sql?new DepositService(sql):null,expiration=sql?new ReservationEx
 const paymentEvidence=sql?new PaymentEvidenceService(sql):null;
 const financialReporting=sql?new FinancialReportingService(sql):null;
 const authRateLimiter=new AuthRateLimiter(createAuthRateLimitStore(sql??undefined));
+const barky=sql?new BarkyService(sql):null;
 const bool = (value: unknown) => value === undefined ? undefined : String(value) === "true";
 const notificationId = z.string().trim().min(1).max(100);
 const financeId=(value:string|undefined)=>{const parsed=z.coerce.number().int().positive().safeParse(value);if(!parsed.success)throw new AppError("VALIDATION_ERROR","Invalid financial record id.");return parsed.data};
@@ -119,7 +121,50 @@ export async function handle(req: RequestLike, res: ResponseLike): Promise<void>
     if(parts[0]==="admin"&&parts[1]==="users"&&parts[2]&&parts[3]==="approval-history"&&parts.length===4&&method==="GET"){await requireAdmin(auth,req);if(!sqlAdmin)throw new AppError("CONFIGURATION_ERROR","SQL Admin operations are unavailable.");return void res.status(200).json(ok(await sqlAdmin.approvalHistory(parts[2])));}
     if (route.startsWith("admin/") && method === "GET") { await requireAdmin(auth, req); const data=await adminData(route,req.query); if(data===undefined) throw new AppError("NOT_FOUND","Route not found."); return void res.status(200).json(ok(data)); }
     if (route.startsWith("admin/") && ["POST", "PUT"].includes(method)) { const actor=await requireAdmin(auth,req); if(!knownAdminMutation(method,parts)) throw new AppError("NOT_FOUND","Route not found."); if(!sqlAdmin) throw new AppError("CONFIGURATION_ERROR","SQL Admin operations are unavailable."); let data:unknown; if(method==="POST"&&parts[1]==="products") data=await sqlAdmin.createProduct(req.body,actor); else if(method==="POST"&&parts[1]==="categories") data=await sqlAdmin.createCategory(req.body,actor); else if(method==="POST"&&parts[1]==="variants") data=await sqlAdmin.createVariant(req.body,actor); else if(method==="PUT"&&parts[1]==="products"&&parts[3]==="active") data=await sqlAdmin.setProductActive(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="categories"&&parts[3]==="active") data=await sqlAdmin.setCategoryActive(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="variants"&&parts[3]==="active") data=await sqlAdmin.setVariantActive(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="products") data=await sqlAdmin.updateProduct(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="categories") data=await sqlAdmin.updateCategory(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="variants") data=await sqlAdmin.updateVariant(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="users"&&parts[3]==="role") data=await sqlAdmin.changeUserRole(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="users"&&parts[3]==="approval") data=await sqlAdmin.changeApproval(parts[2]!,req.body,actor); else if(method==="PUT"&&parts[1]==="settings") data=await sqlAdmin.updateSetting(parts[2]!,req.body,actor); else throw new AppError("NOT_FOUND","Route not found."); return void res.status(method==="POST"?201:200).json(ok(data,"Admin operation completed.")); }
-    throw new AppError("NOT_FOUND", "Route not found.");
+    // ---- Barky AI routes --------------------------------------------------------
+    if(route==="barky/session"&&method==="POST"){
+      if(!barky)throw new AppError("CONFIGURATION_ERROR","Barky is not available.");
+      await barky.ensureTables().catch(()=>{});
+      const actor=await auth.getCurrentUser(req).catch(()=>null);
+      const userId=actor?.role&&actor.id?Number(actor.id):null;
+      const ipHash=String(req.headers["x-forwarded-for"]??req.headers["x-real-ip"]??"anon").split(",")[0]?.trim().slice(0,64)??"anon";
+      const key=`ip:${ipHash}`;
+      barky.checkRateLimit(key);
+      const sessionId=await barky.createSession(userId,ipHash);
+      return void res.status(201).json(ok({sessionId}));
+    }
+    if(route==="barky/chat"&&method==="POST"){
+      if(!barky)throw new AppError("CONFIGURATION_ERROR","Barky is not available.");
+      const actor=await auth.getCurrentUser(req).catch(()=>null);
+      const userId=actor?.role&&actor.id?Number(actor.id):null;
+      const ipHash=String(req.headers["x-forwarded-for"]??req.headers["x-real-ip"]??"anon").split(",")[0]?.trim().slice(0,64)??"anon";
+      barky.checkRateLimit(`ip:${ipHash}`);
+      const{message,sessionId}=req.body as Record<string,unknown>??{};
+      if(!sessionId||typeof sessionId!=="string")throw new AppError("VALIDATION_ERROR","sessionId is required.");
+      const session=await barky.getSession(sessionId);
+      if(!session)throw new AppError("NOT_FOUND","Barky session not found.");
+      if(session.userId!==null&&session.userId!==userId)throw new AppError("FORBIDDEN","This session belongs to another user.");
+      const result=await barky.sendMessage(sessionId,String(message??""),userId);
+      return void res.status(200).json(ok(result));
+    }
+    if(route==="barky/history"&&method==="GET"){
+      if(!barky)throw new AppError("CONFIGURATION_ERROR","Barky is not available.");
+      const sessionId=String(req.query?.sessionId??"");
+      if(!sessionId)throw new AppError("VALIDATION_ERROR","sessionId is required.");
+      const actor=await auth.getCurrentUser(req).catch(()=>null);
+      const userId=actor?.role&&actor.id?Number(actor.id):null;
+      const session=await barky.getSession(sessionId);
+      if(!session)throw new AppError("NOT_FOUND","Barky session not found.");
+      if(session.userId!==null&&session.userId!==userId)throw new AppError("FORBIDDEN","This session belongs to another user.");
+      return void res.status(200).json(ok(await barky.getHistory(sessionId)));
+    }
+    // ---- Admin Barky management ------------------------------------------
+    if(parts[0]==="admin"&&parts[1]==="barky"&&method==="GET"&&parts[2]==="faq"){await requireAdmin(auth,req);if(!barky)throw new AppError("CONFIGURATION_ERROR","Barky is not available.");return void res.status(200).json(ok(await barky.listFaqs()));}
+    if(parts[0]==="admin"&&parts[1]==="barky"&&method==="POST"&&parts[2]==="faq"){await requireAdmin(auth,req);if(!barky)throw new AppError("CONFIGURATION_ERROR","Barky is not available.");const{question,answer}=(req.body as Record<string,unknown>)??{};return void res.status(201).json(ok(await barky.createFaq(String(question??""),String(answer??"")),"FAQ created."));}
+    if(parts[0]==="admin"&&parts[1]==="barky"&&method==="PUT"&&parts[2]==="faq"&&parts[3]){await requireAdmin(auth,req);if(!barky)throw new AppError("CONFIGURATION_ERROR","Barky is not available.");const{question,answer,isActive}=(req.body as Record<string,unknown>)??{};await barky.updateFaq(Number(parts[3]),String(question??""),String(answer??""),(isActive===true||isActive==="true"));return void res.status(200).json(ok({},"FAQ updated."));}
+    if(parts[0]==="admin"&&parts[1]==="barky"&&method==="DELETE"&&parts[2]==="faq"&&parts[3]){await requireAdmin(auth,req);if(!barky)throw new AppError("CONFIGURATION_ERROR","Barky is not available.");await barky.deleteFaq(Number(parts[3]));return void res.status(200).json(ok({},"FAQ deleted."));}
+    if(parts[0]==="admin"&&parts[1]==="barky"&&method==="GET"&&parts[2]==="insights"){await requireAdmin(auth,req);if(!barky)throw new AppError("CONFIGURATION_ERROR","Barky is not available.");return void res.status(200).json(ok(await barky.getInsights()));}
+        throw new AppError("NOT_FOUND", "Route not found.");
   } catch (error) { sendError(res, error); }
 }
 const queried=(query:RequestLike["query"])=>Boolean(query&&Object.keys(query).length);
