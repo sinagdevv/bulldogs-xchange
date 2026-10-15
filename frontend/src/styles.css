@@ -515,81 +515,114 @@ a.list-row:hover{background:var(--subtle)}
 @media (max-width:390px){.collection-grid{grid-template-columns:repeat(2,1fr);gap:8px}}
 
 /* ===================== Barky AI widget ===================== */
-/* Launcher */
-.barky-launcher{position:fixed;bottom:24px;right:24px;z-index:900;display:flex;align-items:center;gap:10px;padding:10px 18px 10px 12px;background:#1a3a6e;color:#fff;border:none;border-radius:999px;cursor:pointer;box-shadow:0 4px 24px rgba(26,58,110,.35);font:600 .88rem/1 var(--font-display);transition:transform .2s,box-shadow .2s}
-.barky-launcher:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(26,58,110,.45)}
+/* ---- Launcher ---- */
+.barky-launcher{position:fixed;bottom:24px;right:24px;z-index:900;display:flex;align-items:center;gap:12px;padding:12px 20px 12px 14px;background:linear-gradient(135deg,#1e4282 0%,#0f2350 100%);color:#fff;border:none;border-radius:999px;cursor:pointer;box-shadow:0 4px 28px rgba(15,35,80,.45),0 0 0 3px rgba(255,215,0,.18);font:inherit;transition:transform .22s var(--ease,ease),box-shadow .22s var(--ease,ease)}
+.barky-launcher:hover{transform:translateY(-3px);box-shadow:0 10px 36px rgba(15,35,80,.55),0 0 0 3px rgba(255,215,0,.35)}
 .barky-launcher:active{transform:translateY(0)}
-.barky-launcher-label{white-space:nowrap}
+.barky-launcher-icon{display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.barky-launcher-text{display:flex;flex-direction:column;gap:1px;text-align:left}
+.barky-launcher-label{font:700 .92rem/1 var(--font-display,inherit);white-space:nowrap;letter-spacing:.01em}
+.barky-launcher-sub{font:500 .7rem/1 inherit;opacity:.72;white-space:nowrap}
+.barky-live-dot{width:9px;height:9px;border-radius:50%;background:#4ade80;border:2px solid rgba(255,255,255,.25);box-shadow:0 0 0 3px rgba(74,222,128,.25);flex-shrink:0;align-self:flex-start;margin-top:4px}
 
-/* Panel */
-.barky-panel{position:fixed;bottom:24px;right:24px;z-index:900;width:min(380px,calc(100vw - 32px));max-height:min(580px,calc(100dvh - 80px));background:var(--surface);border:1.5px solid var(--line);border-radius:18px;box-shadow:0 8px 40px rgba(0,0,0,.18);display:flex;flex-direction:column;overflow:hidden}
+/* ---- Panel ---- */
+.barky-panel{position:fixed;bottom:24px;right:24px;z-index:900;width:min(400px,calc(100vw - 28px));max-height:min(640px,calc(100dvh - 72px));background:var(--surface);border:1.5px solid var(--line);border-radius:20px;box-shadow:0 12px 56px rgba(0,0,0,.22),0 2px 8px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
 
-/* Header */
-.barky-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#1a3a6e;color:#fff}
-.barky-header-left{display:flex;align-items:center;gap:10px}
-.barky-header strong{display:block;font-size:.95rem;font-family:var(--font-display)}
-.barky-tagline{display:block;font-size:.75rem;opacity:.75;font-style:italic}
-.barky-close{background:none;border:none;color:#fff;font-size:1.5rem;line-height:1;cursor:pointer;padding:2px 6px;border-radius:6px;opacity:.7;transition:opacity .15s}
-.barky-close:hover{opacity:1}
+/* ---- Header ---- */
+.barky-header{display:flex;align-items:center;gap:10px;padding:14px 16px;background:linear-gradient(135deg,#1a3a6e 0%,#0d2547 100%);color:#fff;border-bottom:3px solid #FFD700;flex-shrink:0}
+.barky-header-mascot{flex-shrink:0;display:flex}
+.barky-header-info{flex:1;min-width:0}
+.barky-header-name{display:block;font:700 1rem/1.1 var(--font-display,inherit);letter-spacing:.01em}
+.barky-header-sub{display:block;font-size:.71rem;opacity:.7;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.barky-header-status{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.barky-status-dot{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.25);transition:background .3s}
+.barky-status-dot.barky-status-connecting{background:#FFD700;animation:barkStatusPulse .8s ease-in-out infinite alternate}
+@keyframes barkStatusPulse{from{opacity:.4}to{opacity:1}}
+.barky-status-label{font-size:.7rem;opacity:.8;white-space:nowrap}
+.barky-close{background:none;border:none;color:#fff;cursor:pointer;padding:6px;border-radius:8px;opacity:.7;transition:opacity .15s,background .15s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.barky-close:hover{opacity:1;background:rgba(255,255,255,.12)}
 
-/* Messages area */
-.barky-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth}
+/* ---- Messages area ---- */
+.barky-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;overscroll-behavior:contain}
 .barky-messages::-webkit-scrollbar{width:4px}
 .barky-messages::-webkit-scrollbar-thumb{background:var(--line);border-radius:2px}
 
-/* Bubbles */
-.barky-bubble{display:flex;align-items:flex-end;gap:8px;max-width:92%}
+/* ---- Connecting state ---- */
+.barky-connecting{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:40px 20px;flex:1}
+.barky-connecting-mascot{display:flex}
+.barky-connecting-text{display:flex;align-items:center;gap:6px;font:600 .95rem/1 var(--font-display,inherit);color:var(--ink)}
+.barky-connecting-sub{font-size:.78rem;color:var(--muted);text-align:center}
+.barky-dots{display:inline-flex;gap:3px;align-items:center;margin-left:4px}
+.barky-dots span{width:5px;height:5px;border-radius:50%;background:#1a3a6e;animation:barkyDot 1.2s ease-in-out infinite}
+.barky-dots span:nth-child(2){animation-delay:.2s}
+.barky-dots span:nth-child(3){animation-delay:.4s}
+
+/* ---- Bubbles ---- */
+.barky-bubble{display:flex;align-items:flex-end;gap:8px;max-width:88%}
 .barky-user{align-self:flex-end;flex-direction:row-reverse}
 .barky-assistant{align-self:flex-start}
-.barky-avatar-sm{flex-shrink:0}
-.barky-bubble-body{display:flex;flex-direction:column;gap:3px}
-.barky-bubble-body p{margin:0;padding:10px 14px;border-radius:16px;font-size:.88rem;line-height:1.5;white-space:pre-wrap;word-break:break-word}
-.barky-user .barky-bubble-body p{background:#1a3a6e;color:#fff;border-bottom-right-radius:4px}
-.barky-assistant .barky-bubble-body p{background:var(--canvas);border:1px solid var(--line);color:var(--ink);border-bottom-left-radius:4px}
-.barky-ts{font-size:.68rem;color:var(--muted);padding:0 4px}
+.barky-avatar-sm{flex-shrink:0;display:flex}
+.barky-bubble-body{display:flex;flex-direction:column;gap:4px}
+.barky-bubble-body p{margin:0;padding:10px 14px;border-radius:18px;font-size:.875rem;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.barky-user .barky-bubble-body p{background:linear-gradient(135deg,#1a3a6e 0%,#0d2547 100%);color:#fff;border-bottom-right-radius:5px;box-shadow:0 2px 8px rgba(15,35,80,.2)}
+.barky-assistant .barky-bubble-body p{background:var(--canvas);border:1px solid var(--line);color:var(--ink);border-bottom-left-radius:5px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.barky-ts{font-size:.67rem;color:var(--muted);padding:0 4px}
 .barky-user .barky-ts{text-align:right}
 
-/* Typing dots */
-.barky-typing{display:flex;gap:4px;padding:12px 14px;background:var(--canvas);border:1px solid var(--line);border-radius:16px;border-bottom-left-radius:4px}
+/* ---- Typing dots ---- */
+.barky-typing{display:flex;gap:4px;padding:12px 14px;background:var(--canvas);border:1px solid var(--line);border-radius:18px;border-bottom-left-radius:5px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
 .barky-typing span{width:7px;height:7px;border-radius:50%;background:#1a3a6e;animation:barkyDot 1.2s ease-in-out infinite}
 .barky-typing span:nth-child(2){animation-delay:.2s}
 .barky-typing span:nth-child(3){animation-delay:.4s}
 @keyframes barkyDot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
 
-/* Error */
-.barky-error{background:#fff5f5;border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;font-size:.83rem;color:#991b1b;display:flex;align-items:center;gap:10px}
-.barky-retry{background:none;border:1px solid #fca5a5;border-radius:6px;padding:3px 10px;font-size:.8rem;color:#991b1b;cursor:pointer;flex-shrink:0}
-.barky-retry:hover{background:#fca5a5;color:#fff}
+/* ---- Error card ---- */
+.barky-error-card{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid #fca5a5;border-left:4px solid #ef4444;background:#fff8f8;font-size:.83rem}
+.barky-error-connect{border-color:#fcd34d;border-left-color:#f59e0b;background:#fffbf0}
+.barky-error-icon{flex-shrink:0;color:#ef4444;display:flex}
+.barky-error-connect .barky-error-icon{color:#d97706}
+.barky-error-body{flex:1;display:flex;flex-direction:column;gap:2px}
+.barky-error-body strong{font-weight:700;color:#991b1b;font-size:.8rem}
+.barky-error-connect .barky-error-body strong{color:#92400e}
+.barky-error-body span{color:#7f1d1d;line-height:1.4}
+.barky-error-connect .barky-error-body span{color:#78350f}
+.barky-retry-btn{display:flex;align-items:center;gap:5px;flex-shrink:0;background:none;border:1.5px solid #ef4444;color:#ef4444;border-radius:8px;padding:5px 10px;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .15s,color .15s;white-space:nowrap}
+.barky-error-connect .barky-retry-btn{border-color:#f59e0b;color:#d97706}
+.barky-retry-btn:hover{background:#ef4444;color:#fff}
+.barky-error-connect .barky-retry-btn:hover{background:#f59e0b;color:#fff}
 
-/* Suggested prompts */
-.barky-suggestions{padding:0 12px 8px;display:flex;flex-wrap:wrap;gap:6px}
-.barky-suggest-btn{background:none;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:.78rem;color:var(--muted);cursor:pointer;transition:background .15s,color .15s,border-color .15s;text-align:left}
+/* ---- Suggested prompts ---- */
+.barky-suggestions{padding:0 12px 10px;display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0}
+.barky-suggest-btn{background:none;border:1.5px solid var(--line);border-radius:12px;padding:8px 10px;font-size:.76rem;line-height:1.35;color:var(--ink);cursor:pointer;transition:background .15s,color .15s,border-color .15s;text-align:left;font-family:inherit}
 .barky-suggest-btn:hover{background:#1a3a6e;color:#fff;border-color:#1a3a6e}
 
-/* Input row */
-.barky-input-row{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
-.barky-input{flex:1;border:1.5px solid var(--line);border-radius:999px;padding:9px 16px;font-size:.88rem;background:var(--canvas);color:var(--ink);outline:none;transition:border-color .15s}
-.barky-input:focus{border-color:#1a3a6e}
+/* ---- Input row ---- */
+.barky-input-row{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--surface);flex-shrink:0}
+.barky-input{flex:1;border:1.5px solid var(--line);border-radius:999px;padding:9px 16px;font-size:.875rem;background:var(--canvas);color:var(--ink);outline:none;transition:border-color .18s,box-shadow .18s;font-family:inherit}
+.barky-input:focus{border-color:#1a3a6e;box-shadow:0 0 0 3px rgba(26,58,110,.12)}
 .barky-input::placeholder{color:var(--muted)}
-.barky-send{width:38px;height:38px;flex-shrink:0;border-radius:50%;background:#1a3a6e;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,transform .15s}
-.barky-send:hover:not(:disabled){background:#FFD700;color:#1a3a6e;transform:scale(1.08)}
-.barky-send:disabled{opacity:.4;cursor:not-allowed}
+.barky-input:disabled{opacity:.6;cursor:not-allowed}
+.barky-send{width:40px;height:40px;flex-shrink:0;border-radius:50%;background:#1a3a6e;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,transform .15s,box-shadow .15s}
+.barky-send:hover:not(:disabled){background:#FFD700;color:#1a3a6e;transform:scale(1.08);box-shadow:0 2px 10px rgba(255,215,0,.4)}
+.barky-send:disabled{opacity:.38;cursor:not-allowed}
 
-/* Animations */
-@keyframes barkyBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
-@keyframes barkyWave{0%,100%{transform:rotate(0deg)}30%{transform:rotate(20deg)}60%{transform:rotate(-10deg)}}
-.barky-breathe{animation:barkyBreathe 2.8s ease-in-out infinite}
-.barky-wave{animation:barkyWave 1.2s ease-in-out infinite}
+/* ---- Mascot animations ---- */
+@keyframes barkyBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+@keyframes barkyWave{0%,100%{transform:rotate(0deg)}30%{transform:rotate(22deg)}60%{transform:rotate(-10deg)}}
+.barky-breathe{animation:barkyBreathe 3s ease-in-out infinite}
+.barky-wave{animation:barkyWave 1.3s ease-in-out infinite}
 .barky-think-1{animation:barkyDot 1.2s ease-in-out infinite}
 .barky-think-2{animation:barkyDot 1.2s ease-in-out infinite;animation-delay:.2s}
 .barky-think-3{animation:barkyDot 1.2s ease-in-out infinite;animation-delay:.4s}
-.barky-paw{transform-origin:63px 54px;animation:barkyWave 1.2s ease-in-out infinite}
+.barky-paw{transform-origin:63px 53px;animation:barkyWave 1.3s ease-in-out infinite}
 
-/* Reduced motion */
-@media (prefers-reduced-motion:reduce){.barky-breathe,.barky-wave,.barky-paw,.barky-think-1,.barky-think-2,.barky-think-3,.barky-typing span{animation:none}}
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion:reduce){.barky-breathe,.barky-wave,.barky-paw,.barky-think-1,.barky-think-2,.barky-think-3,.barky-typing span,.barky-dots span,.barky-status-dot{animation:none}}
 
-/* Mobile adjustments */
+/* ---- Mobile ---- */
 @media (max-width:600px){
-  .barky-launcher{bottom:16px;right:16px;padding:9px 14px 9px 10px}
-  .barky-panel{bottom:16px;right:16px;width:calc(100vw - 32px);border-radius:14px}
+  .barky-launcher{bottom:16px;right:16px;padding:10px 16px 10px 12px;gap:10px}
+  .barky-launcher-sub{display:none}
+  .barky-panel{bottom:16px;right:16px;width:calc(100vw - 28px);max-height:calc(100dvh - 64px);border-radius:16px}
+  .barky-suggestions{grid-template-columns:1fr}
 }
