@@ -17,7 +17,7 @@
  *  10. getHistory with malformed UUID returns empty array without querying DB
  */
 
-import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { BarkyService } from "../barky-service.js";
 import { AppError } from "../../lib/errors.js";
 import type { SqlTransactionManager } from "../../integrations/sql-server.js";
@@ -202,17 +202,27 @@ describe("rate limiting", () => {
     await expect(service.checkRateLimit("user:42")).resolves.toBeUndefined();
   });
 
-  it("prefixes rate limit key with barky: to isolate from auth keys", async () => {
+  it("stores a 64-char hex key (SHA-256 of barky:rawKey) to fit varchar(64), isolating from auth keys", async () => {
     const { service, db } = makeService();
     db.query.mockResolvedValueOnce([{ count: 1 }]);
+    const { createHash } = await import("node:crypto");
 
     await service.checkRateLimit("user:99");
 
     const callArgs = db.query.mock.calls[0];
     expect(String(callArgs?.[0])).toContain("auth_rate_limits");
     const params = callArgs?.[1] as Record<string, unknown>;
-    expect(String(params?.key)).toMatch(/^barky:/);
-    expect(String(params?.key)).toContain("user:99");
+    const storedKey = String(params?.key);
+    // Must be exactly 64 hex chars (SHA-256) — always fits varchar(64)
+    expect(storedKey).toMatch(/^[0-9a-f]{64}$/);
+    // Must equal SHA-256("barky:user:99") — namespace preserved in preimage, not stored value
+    const expected = createHash("sha256").update("barky:user:99").digest("hex");
+    expect(storedKey).toBe(expected);
+    // Different rawKeys must produce different stored keys (no collision with auth: keys)
+    db.query.mockResolvedValueOnce([{ count: 1 }]);
+    await service.checkRateLimit("user:100");
+    const storedKey2 = String((db.query.mock.calls[1]?.[1] as Record<string, unknown>)?.key);
+    expect(storedKey2).not.toBe(storedKey);
   });
 
   it("throws CONFIGURATION_ERROR (not silently allows) when rate limit store fails", async () => {

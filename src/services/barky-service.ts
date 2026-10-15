@@ -11,6 +11,7 @@
  * - Chat history strictly bounded (10 turns = 20 rows MAX) to prevent unbounded growth
  * - Provider error messages never leak API keys or raw upstream bodies to callers
  */
+import { createHash } from "node:crypto";
 import { AppError } from "../lib/errors.js";
 import type { SqlTransactionManager } from "../integrations/sql-server.js";
 import { PostgresRateLimitStore } from "./auth-rate-limiter.js";
@@ -250,7 +251,9 @@ export class BarkyService {
   // ---- Rate limiting (PostgreSQL-backed, Barky-scoped) ---------------------
 
   async checkRateLimit(rawKey: string): Promise<void> {
-    const key = `barky:${rawKey}`;
+    // Hash to exactly 64 hex chars so the key always fits dbo.auth_rate_limits.key varchar(64).
+    // The barky: namespace is preserved in the hash preimage to isolate from auth keys.
+    const key = createHash("sha256").update(`barky:${rawKey}`).digest("hex");
     try {
       const count = await this.rateLimitStore.increment(key, BARKY_RATE_WINDOW_SECONDS);
       if (count > BARKY_RATE_MAX) {
