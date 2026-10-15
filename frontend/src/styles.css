@@ -502,3 +502,14 @@ a.list-row:hover{background:var(--subtle)}
   }
 }
 .product-grid.compact .product-media{aspect-ratio:1}
+
+/* ===================== Catalog: collection preview ===================== */
+.catalog-live-head{display:flex;align-items:center;gap:12px;margin:0 0 var(--space-5)}
+.catalog-live-head h2{font:700 1.15rem var(--font-display);letter-spacing:-.01em;margin:0}
+.collection-section{margin-top:var(--space-8);border-top:1.5px solid var(--line);padding-top:var(--space-7)}
+.collection-category{margin-bottom:var(--space-7)}
+.collection-cat-title{font-size:.78rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 var(--space-4)}
+.collection-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:var(--space-4)}
+.coll-only-pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:var(--canvas);border:1px solid var(--line);color:var(--muted);font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;flex:none}
+@media (max-width:600px){.collection-grid{grid-template-columns:repeat(2,1fr);gap:10px}}
+@media (max-width:390px){.collection-grid{grid-template-columns:repeat(2,1fr);gap:8px}}
