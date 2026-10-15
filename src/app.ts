@@ -124,12 +124,11 @@ export async function handle(req: RequestLike, res: ResponseLike): Promise<void>
     // ---- Barky AI routes --------------------------------------------------------
     if(route==="barky/session"&&method==="POST"){
       if(!barky)throw new AppError("CONFIGURATION_ERROR","Barky is not available.");
-      await barky.ensureTables().catch(()=>{});
       const actor=await auth.getCurrentUser(req).catch(()=>null);
       const userId=actor?.role&&actor.id?Number(actor.id):null;
       const ipHash=String(req.headers["x-forwarded-for"]??req.headers["x-real-ip"]??"anon").split(",")[0]?.trim().slice(0,64)??"anon";
       const key=`ip:${ipHash}`;
-      barky.checkRateLimit(key);
+      await barky.checkRateLimit(key);
       const sessionId=await barky.createSession(userId,ipHash);
       return void res.status(201).json(ok({sessionId}));
     }
@@ -138,7 +137,7 @@ export async function handle(req: RequestLike, res: ResponseLike): Promise<void>
       const actor=await auth.getCurrentUser(req).catch(()=>null);
       const userId=actor?.role&&actor.id?Number(actor.id):null;
       const ipHash=String(req.headers["x-forwarded-for"]??req.headers["x-real-ip"]??"anon").split(",")[0]?.trim().slice(0,64)??"anon";
-      barky.checkRateLimit(`ip:${ipHash}`);
+      await barky.checkRateLimit(`ip:${ipHash}`);
       const{message,sessionId}=req.body as Record<string,unknown>??{};
       if(!sessionId||typeof sessionId!=="string")throw new AppError("VALIDATION_ERROR","sessionId is required.");
       const session=await barky.getSession(sessionId);
