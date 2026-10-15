@@ -9,7 +9,7 @@ describe("application runtime role",()=>{
     expect(sql).toContain("REVOKE CREATE ON SCHEMA dbo, public");
   });
   it("cannot access provider administration schemas",()=>{
-    expect(sql).toContain("REVOKE ALL ON ALL TABLES IN SCHEMA auth, vault");
+    expect(sql).toContain("REVOKE ALL ON SCHEMA public, auth, vault");
     expect(sql).not.toMatch(/GRANT\s+[^;]+\s+ON\s+[^;]*(?:auth|vault)\./i);
   });
   it("grants only the application DML needed by reviewed services",()=>{
@@ -18,6 +18,8 @@ describe("application runtime role",()=>{
     expect(sql).toContain("GRANT UPDATE ON TABLE");
     expect(sql).toContain("dbo.automationoutbox");
     expect(sql).toContain("dbo.approvalhistory");
+    expect(sql).toContain("dbo.auth_rate_limits");
+    expect(sql).toContain("dbo.bx_barky_sessions");
     expect(sql).not.toMatch(/GRANT\s+ALL/i);
   });
 });

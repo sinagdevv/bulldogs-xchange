@@ -48,6 +48,8 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA dbo TO bulldogs_app_runtime;
 
 REVOKE DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA dbo FROM bulldogs_app_runtime;
 REVOKE CREATE ON SCHEMA dbo, public FROM bulldogs_app_runtime;
-REVOKE ALL ON ALL TABLES IN SCHEMA auth, vault FROM bulldogs_app_runtime;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA auth, vault FROM bulldogs_app_runtime;
-REVOKE ALL ON ALL FUNCTIONS IN SCHEMA auth, vault FROM bulldogs_app_runtime;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+  dbo.auth_rate_limits, dbo.bx_barky_sessions, dbo.bx_barky_messages,
+  dbo.bx_barky_faq
+TO bulldogs_app_runtime;

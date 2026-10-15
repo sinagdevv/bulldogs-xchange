@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import {useEffect,useMemo,useState} from "react";
 import {NavLink,useLocation,useNavigate,useParams} from "react-router-dom";
-import {Empty,ErrorState,Loading,Modal,PageHeader,ProductCard,ProductGridSkeleton,ProductImage,RowsSkeleton,Stat,StatusBadge} from "./components";
+import {Empty,ErrorState,Loading,Modal,PageHeader,ProductCard,ProductImage,RowsSkeleton,Stat,StatusBadge} from "./components";
 import {useSession} from "./session";
 import {useToast} from "./toast";
 import {Icon} from "./icons";
@@ -33,7 +33,7 @@ export function CustomerHome(){const{api,session}=useSession(),reservations=useC
     </div></>}
 
 /* ---------------- Catalog ---------------- */
-export function CustomerCatalog(){const{api}=useSession(),[query,setQuery]=useState<CatalogQuery>({sort:"title"}),[term,setTerm]=useState(""),[products,setProducts]=useState<Product[]|null>(null),[error,setError]=useState(""),[attempt,setAttempt]=useState(0),categories=useCustomerData<Category[]>(s=>api.categories(s));
+export function CustomerCatalog(){const{api}=useSession(),[query,setQuery]=useState<CatalogQuery>({sort:"title"}),[term,setTerm]=useState(""),[,setProducts]=useState<Product[]|null>(null),[,setError]=useState(""),[attempt]=useState(0),categories=useCustomerData<Category[]>(s=>api.categories(s));
   useEffect(()=>{const t=window.setTimeout(()=>setQuery(q=>q.search===term?q:{...q,search:term}),250);return()=>window.clearTimeout(t)},[term]);
   useEffect(()=>{const c=new AbortController();setProducts(null);setError("");api.products(query,c.signal).then(setProducts).catch(e=>{if(!isAbort(e))setError(errorMessage(e))});return()=>c.abort()},[api,query.search,query.category,query.sort,attempt]);
   const active=categories.data?.filter(c=>c.isActive)??[];

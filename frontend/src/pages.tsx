@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useState} from "react";
 import {useProducts} from "./use-products";
 import {NavLink,useLocation} from "react-router-dom";
-import {Empty,ErrorState,PageHeader,ProductCard} from "./components";
+import {PageHeader} from "./components";
 import {useSession} from "./session";
 import type {Category} from "./types";
 import {Icon} from "./icons";
@@ -15,7 +15,7 @@ import {useReveal} from "./motion";
 type CatalogCollectionItem={file:string;src:string;title:string;category:string;type:string;studio:boolean};
 function CatalogCollectionCard({item}:{item:CatalogCollectionItem}){return<article className="lp-card2 collection-only"><div className="lp-photo"><img src={item.src} alt={item.title} loading="lazy"/></div><div className="lp-meta"><span><b>{item.title}</b><small>{item.type} · {item.category}</small></span><span className="coll-only-pill">Collection</span></div></article>}
 
-export function Catalog(){const{api}=useSession(),{products,error,retry}=useProducts(),[categories,setCategories]=useState<Category[]>([]),[category,setCategory]=useState(""),[search,setSearch]=useState("");useEffect(()=>{const c=new AbortController();api.categories(c.signal).then(setCategories).catch(()=>{/* filters stay hidden when categories are unavailable */});return()=>c.abort()},[api]);const visible=useMemo(()=>(products??[]).filter(p=>(!category||p.categoryId===category)&&(!search||`${p.title} ${p.sku} ${p.description}`.toLowerCase().includes(search.toLowerCase()))),[products,category,search]);const active=categories.filter(c=>c.isActive);
+export function Catalog(){const{api}=useSession();useProducts();const[categories,setCategories]=useState<Category[]>([]),[category,setCategory]=useState(""),[search,setSearch]=useState("");useEffect(()=>{const c=new AbortController();api.categories(c.signal).then(setCategories).catch(()=>{/* filters stay hidden when categories are unavailable */});return()=>c.abort()},[api]);const active=categories.filter(c=>c.isActive);
   const collectionItems=useMemo(()=>{if(!search)return showcaseItems;const q=search.toLowerCase();return showcaseItems.filter(i=>i.title.toLowerCase().includes(q)||i.type.toLowerCase().includes(q)||i.category.toLowerCase().includes(q))},[search]);
   const collectionGroups=useMemo(()=>{const map=new Map<string,typeof showcaseItems>();for(const item of collectionItems){const g=map.get(item.category)??[];g.push(item);map.set(item.category,g)}return[...map.entries()]},[collectionItems]);
   const showCollection=!category&&collectionGroups.length>0;
