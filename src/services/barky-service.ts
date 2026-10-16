@@ -53,6 +53,15 @@ export interface ChatResponse {
   reply: string;
   sessionId: string;
   messageId: string;
+  aiAvailable: boolean;
+}
+
+export function canAccessBarkySession(
+  session: { userId: number | null; ipHash: string },
+  userId: number | null,
+  ipHash: string,
+): boolean {
+  return session.userId !== null ? session.userId === userId : session.ipHash === ipHash;
 }
 
 // ---- Provider adapter -----------------------------------------------------
@@ -78,30 +87,47 @@ async function fetchWithTimeout(url: string, init: RequestInit, ms: number): Pro
 }
 
 async function callProvider(
+  provider: "Groq" | "Mistral",
   url: string,
   model: string,
   key: string,
   messages: ProviderMessage[],
 ): Promise<string> {
-  let res: Response;
-  try {
-    res = await fetchWithTimeout(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-      body: JSON.stringify({ model, messages, max_tokens: 512, temperature: 0.5 }),
-    }, PROVIDER_TIMEOUT_MS);
-  } catch (err) {
-    const msg = err instanceof Error && err.name === "AbortError" ? "timeout" : "network error";
-    throw new AppError("EXTERNAL_SERVICE_ERROR", `AI provider request failed (${msg}).`);
+  let res: Response | undefined;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      res = await fetchWithTimeout(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+        body: JSON.stringify({ model, messages, max_tokens: 512, temperature: 0.5 }),
+      }, PROVIDER_TIMEOUT_MS);
+    } catch (err) {
+      const msg = err instanceof Error && err.name === "AbortError" ? "timeout" : "network error";
+      throw new AppError("EXTERNAL_SERVICE_ERROR", `AI provider request failed (${msg}).`);
+    }
+
+    if (res.ok) break;
+
+    let code: string | undefined;
+    let type: string | undefined;
+    try {
+      const body = await res.json() as { error?: { code?: unknown; type?: unknown } };
+      code = typeof body.error?.code === "string" ? body.error.code.slice(0, 80) : undefined;
+      type = typeof body.error?.type === "string" ? body.error.type.slice(0, 80) : undefined;
+    } catch { /* no structured provider error */ }
+    const requestId = (res.headers.get("x-request-id") ?? res.headers.get("request-id"))?.slice(0, 100);
+    const retryAfter = res.headers.get("retry-after")?.slice(0, 40);
+    console.warn(`[barky] ${provider} request failed`, { status: res.status, code, type, requestId, retryAfter });
+
+    if (![502, 503, 504].includes(res.status) || attempt === 1) {
+      throw new AppError(
+        "EXTERNAL_SERVICE_ERROR",
+        `AI provider returned ${res.status}. Barky is temporarily unavailable.`,
+      );
+    }
   }
 
-  if (!res.ok) {
-    // Do NOT surface the raw body — it may contain rate-limit details or key info.
-    throw new AppError(
-      "EXTERNAL_SERVICE_ERROR",
-      `AI provider returned ${res.status}. Barky is temporarily unavailable.`,
-    );
-  }
+  if (!res?.ok) throw new AppError("EXTERNAL_SERVICE_ERROR", "AI provider is temporarily unavailable.");
 
   let data: ProviderResponse;
   try {
@@ -123,12 +149,12 @@ async function chat(messages: ProviderMessage[]): Promise<string> {
   const mistralKey = process.env.MISTRAL_API_KEY?.trim();
 
   if (!groqKey && !mistralKey) {
-    return "Barky is not available right now. Please check back later or contact the Xchange team directly.";
+    throw new AppError("EXTERNAL_SERVICE_ERROR", "No AI provider is configured.");
   }
 
   if (groqKey) {
     try {
-      return await callProvider(GROQ_URL, GROQ_MODEL, groqKey, messages);
+      return await callProvider("Groq", GROQ_URL, GROQ_MODEL, groqKey, messages);
     } catch (err) {
       if (!mistralKey) throw err;
       // Log for ops visibility, then fall through to Mistral.
@@ -137,7 +163,7 @@ async function chat(messages: ProviderMessage[]): Promise<string> {
   }
 
   if (mistralKey) {
-    return await callProvider(MISTRAL_URL, MISTRAL_MODEL, mistralKey, messages);
+    return await callProvider("Mistral", MISTRAL_URL, MISTRAL_MODEL, mistralKey, messages);
   }
 
   throw new AppError("EXTERNAL_SERVICE_ERROR", "All AI providers are temporarily unavailable.");
@@ -280,13 +306,13 @@ export class BarkyService {
     return id;
   }
 
-  async getSession(sessionId: string): Promise<{ userId: number | null } | null> {
+  async getSession(sessionId: string): Promise<{ userId: number | null; ipHash: string } | null> {
     if (!/^[0-9a-f-]{36}$/.test(sessionId)) return null; // reject obviously malformed UUIDs
-    const rows = await this.sql.query<{ user_id: number | null }>(`
-      SELECT user_id FROM dbo.bx_barky_sessions WHERE id = @sessionId LIMIT 1
+    const rows = await this.sql.query<{ user_id: number | null; ip_hash: string }>(`
+      SELECT user_id, ip_hash FROM dbo.bx_barky_sessions WHERE id = @sessionId LIMIT 1
     `, { sessionId });
     if (!rows.length) return null;
-    return { userId: rows[0]!.user_id };
+    return { userId: rows[0]!.user_id, ipHash: rows[0]!.ip_hash };
   }
 
   // ---- Chat ----------------------------------------------------------------
@@ -327,7 +353,17 @@ export class BarkyService {
       { role: "user", content: clean },
     ];
 
-    const reply = await chat(messages);
+    let aiAvailable = true;
+    let reply: string;
+    try {
+      reply = await chat(messages);
+    } catch (err) {
+      if (!(err instanceof AppError) || err.code !== "EXTERNAL_SERVICE_ERROR") throw err;
+      aiAvailable = false;
+      const exactFaq = faqs.find(f => f.question.trim().toLowerCase() === clean.toLowerCase());
+      reply = exactFaq?.answer
+        ?? "Barky's AI is temporarily unavailable. Please use the live catalog for current merchandise availability or contact the Xchange team.";
+    }
 
     // Persist both turns atomically-ish (sequential inserts; not critical-path transactional).
     const msgId = crypto.randomUUID();
@@ -339,7 +375,7 @@ export class BarkyService {
       UPDATE dbo.bx_barky_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = @sessionId
     `, { sessionId, userMsg: clean, msgId, reply });
 
-    return { reply, sessionId, messageId: msgId };
+    return { reply, sessionId, messageId: msgId, aiAvailable };
   }
 
   async getHistory(sessionId: string): Promise<BarkyMessageRecord[]> {

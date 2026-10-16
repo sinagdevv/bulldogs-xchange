@@ -537,6 +537,7 @@ a.list-row:hover{background:var(--subtle)}
 .barky-header-status{display:flex;align-items:center;gap:5px;flex-shrink:0}
 .barky-status-dot{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.25);transition:background .3s}
 .barky-status-dot.barky-status-connecting{background:#FFD700;animation:barkStatusPulse .8s ease-in-out infinite alternate}
+.barky-status-dot.barky-status-unavailable{background:#f87171;box-shadow:0 0 0 3px rgba(248,113,113,.25)}
 @keyframes barkStatusPulse{from{opacity:.4}to{opacity:1}}
 .barky-status-label{font-size:.7rem;opacity:.8;white-space:nowrap}
 .barky-close{background:none;border:none;color:#fff;cursor:pointer;padding:6px;border-radius:8px;opacity:.7;transition:opacity .15s,background .15s;display:flex;align-items:center;justify-content:center;flex-shrink:0}

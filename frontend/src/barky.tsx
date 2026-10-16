@@ -146,6 +146,7 @@ export function BarkyWidget(){
   const[connecting,setConnecting]=useState(false);
   const[error,setError]=useState("");
   const[connectError,setConnectError]=useState(false);
+  const[aiUnavailable,setAiUnavailable]=useState(false);
   const[sending,setSending]=useState(false);
   const msgEndRef=useRef<HTMLDivElement>(null);
   const inputRef=useRef<HTMLInputElement>(null);
@@ -183,11 +184,13 @@ export function BarkyWidget(){
     const userMsg:BarkyMsg={id:`u-${Date.now()}`,role:"user",content:msg,ts:Date.now()};
     setMsgs(m=>[...m,userMsg]);
     try{
-      const data=await api.request<{reply:string}>("barky/chat",{
+      const data=await api.request<{reply:string;aiAvailable:boolean}>("barky/chat",{
         method:"POST",body:JSON.stringify({sessionId,message:msg}),
       });
+      setAiUnavailable(!data.aiAvailable);
       setMsgs(m=>[...m,{id:`a-${Date.now()}`,role:"assistant",content:data.reply,ts:Date.now()}]);
     }catch(e){
+      setAiUnavailable(true);
       setError(e instanceof Error?e.message:"Barky had trouble responding.");
       setConnectError(false);
     }finally{setSending(false);}
@@ -225,8 +228,8 @@ export function BarkyWidget(){
           <span className="barky-header-sub">Bulldogs Xchange AI</span>
         </div>
         <div className="barky-header-status">
-          <span className={`barky-status-dot${connecting?" barky-status-connecting":""}`} aria-hidden="true"/>
-          <span className="barky-status-label">{connecting?"Connecting":"Online"}</span>
+          <span className={`barky-status-dot${connecting?" barky-status-connecting":aiUnavailable?" barky-status-unavailable":""}`} aria-hidden="true"/>
+          <span className="barky-status-label">{connecting?"Connecting":aiUnavailable?"AI Unavailable":"Online"}</span>
         </div>
         <button className="barky-close" onClick={close} aria-label="Close Barky">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">

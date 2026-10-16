@@ -25,7 +25,7 @@ import {FinancialReportingService} from "./services/financial-reporting-service.
 import {toPdf,toXlsx,type ReportType} from "./services/report-export-service.js";
 import {PaymentEvidenceService} from "./services/payment-evidence-service.js";
 import {LocalAuth,LocalAuthProvider} from "./auth/local-demo-auth.js";
-import {BarkyService} from "./services/barky-service.js";
+import {BarkyService,canAccessBarkySession} from "./services/barky-service.js";
 
 export const repository = createRepository();
 const localDemo=process.env.LOCAL_DEMO==="true"&&process.env.DATA_PROVIDER==="postgres"&&process.env.SUPABASE_DATABASE_URL?.includes("127.0.0.1:55432/bulldogs_xchange_staging");
@@ -142,7 +142,7 @@ export async function handle(req: RequestLike, res: ResponseLike): Promise<void>
       if(!sessionId||typeof sessionId!=="string")throw new AppError("VALIDATION_ERROR","sessionId is required.");
       const session=await barky.getSession(sessionId);
       if(!session)throw new AppError("NOT_FOUND","Barky session not found.");
-      if(session.userId!==null&&session.userId!==userId)throw new AppError("FORBIDDEN","This session belongs to another user.");
+      if(!canAccessBarkySession(session,userId,ipHash))throw new AppError("FORBIDDEN","This session belongs to another user.");
       const result=await barky.sendMessage(sessionId,String(message??""),userId);
       return void res.status(200).json(ok(result));
     }
@@ -152,9 +152,10 @@ export async function handle(req: RequestLike, res: ResponseLike): Promise<void>
       if(!sessionId)throw new AppError("VALIDATION_ERROR","sessionId is required.");
       const actor=await auth.getCurrentUser(req).catch(()=>null);
       const userId=actor?.role&&actor.id?Number(actor.id):null;
+      const ipHash=String(req.headers["x-forwarded-for"]??req.headers["x-real-ip"]??"anon").split(",")[0]?.trim().slice(0,64)??"anon";
       const session=await barky.getSession(sessionId);
       if(!session)throw new AppError("NOT_FOUND","Barky session not found.");
-      if(session.userId!==null&&session.userId!==userId)throw new AppError("FORBIDDEN","This session belongs to another user.");
+      if(!canAccessBarkySession(session,userId,ipHash))throw new AppError("FORBIDDEN","This session belongs to another user.");
       return void res.status(200).json(ok(await barky.getHistory(sessionId)));
     }
     // ---- Admin Barky management ------------------------------------------

@@ -18,7 +18,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
-import { BarkyService } from "../barky-service.js";
+import { BarkyService, canAccessBarkySession } from "../barky-service.js";
 import { AppError } from "../../lib/errors.js";
 import type { SqlTransactionManager } from "../../integrations/sql-server.js";
 
@@ -46,6 +46,13 @@ const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
 // ---------------------------------------------------------------------------
 
 describe("session isolation", () => {
+  it("binds guest sessions to their originating IP and user sessions to their owner", () => {
+    expect(canAccessBarkySession({ userId: null, ipHash: "203.0.113.2" }, null, "203.0.113.2")).toBe(true);
+    expect(canAccessBarkySession({ userId: null, ipHash: "203.0.113.2" }, null, "203.0.113.3")).toBe(false);
+    expect(canAccessBarkySession({ userId: 42, ipHash: "203.0.113.2" }, 42, "203.0.113.3")).toBe(true);
+    expect(canAccessBarkySession({ userId: 42, ipHash: "203.0.113.2" }, 7, "203.0.113.2")).toBe(false);
+  });
+
   it("getSession returns null for a session that belongs to a different user (no row returned)", async () => {
     // Simulates: session exists but row lookup returns nothing (ownership checked at call-site in app.ts)
     const { service, db } = makeService();
@@ -59,18 +66,18 @@ describe("session isolation", () => {
 
   it("getSession returns the userId when session exists", async () => {
     const { service, db } = makeService();
-    db.query.mockResolvedValueOnce([{ user_id: 42 }]);
+    db.query.mockResolvedValueOnce([{ user_id: 42, ip_hash: "203.0.113.1" }]);
 
     const result = await service.getSession(VALID_UUID);
-    expect(result).toEqual({ userId: 42 });
+    expect(result).toEqual({ userId: 42, ipHash: "203.0.113.1" });
   });
 
   it("getSession returns userId: null for guest sessions", async () => {
     const { service, db } = makeService();
-    db.query.mockResolvedValueOnce([{ user_id: null }]);
+    db.query.mockResolvedValueOnce([{ user_id: null, ip_hash: "203.0.113.2" }]);
 
     const result = await service.getSession(VALID_UUID);
-    expect(result).toEqual({ userId: null });
+    expect(result).toEqual({ userId: null, ipHash: "203.0.113.2" });
   });
 });
 
@@ -308,7 +315,7 @@ describe("provider fallback [MOCKED]", () => {
     expect(result.reply).toBe("Mistral fallback");
   });
 
-  it("throws EXTERNAL_SERVICE_ERROR when both providers fail", async () => {
+  it("persists a deterministic unavailable reply when both providers fail", async () => {
     const { service, db } = makeService();
     db.query
       .mockResolvedValueOnce([])
@@ -319,8 +326,39 @@ describe("provider fallback [MOCKED]", () => {
       new Response("Bad Gateway", { status: 502 })
     ));
 
-    await expect(service.sendMessage(VALID_UUID, "Hello", null))
-      .rejects.toMatchObject({ code: "EXTERNAL_SERVICE_ERROR" });
+    const result = await service.sendMessage(VALID_UUID, "Hello", null);
+    expect(result.aiAvailable).toBe(false);
+    expect(result.reply).toContain("AI is temporarily unavailable");
+    expect(db.query).toHaveBeenLastCalledWith(expect.stringContaining("INSERT INTO dbo.bx_barky_messages"), expect.objectContaining({ reply: result.reply }));
+  });
+
+  it("does not retry a 429 response", async () => {
+    const { service, db } = makeService();
+    db.query.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    delete process.env.MISTRAL_API_KEY;
+    const fetcher = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ error: { code: "insufficient_quota", type: "rate_limit_error" } }),
+      { status: 429, headers: { "retry-after": "60", "x-request-id": "req-safe" } },
+    ));
+    vi.stubGlobal("fetch", fetcher);
+
+    const result = await service.sendMessage(VALID_UUID, "Hello", null);
+    expect(result.aiAvailable).toBe(false);
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+
+  it("retries one transient 503 then succeeds", async () => {
+    const { service, db } = makeService();
+    db.query.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    delete process.env.MISTRAL_API_KEY;
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response("Unavailable", { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ choices: [{ message: { content: "Recovered" } }] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+
+    const result = await service.sendMessage(VALID_UUID, "Hello", null);
+    expect(result).toMatchObject({ reply: "Recovered", aiAvailable: true });
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
   it("uses Groq successfully without trying Mistral when Groq works", async () => {
@@ -365,7 +403,8 @@ describe("no API keys [MOCKED]", () => {
       .mockResolvedValueOnce([]);
 
     const result = await service.sendMessage(VALID_UUID, "Hello", null);
-    expect(result.reply).toContain("not available right now");
+    expect(result).toMatchObject({ aiAvailable: false });
+    expect(result.reply).toContain("AI is temporarily unavailable");
 
     if (saved.groq) process.env.GROQ_API_KEY = saved.groq;
     if (saved.mistral) process.env.MISTRAL_API_KEY = saved.mistral;
