@@ -20,9 +20,11 @@ export function parseVercelResult(result) {
   try { response = parseVercelResponse(result.stdout); }
   catch (error) {
     if (result.status !== 0 || result.error) {
-      const category = result.status === 6 || /resolve host|dns/i.test(result.stderr ?? "")
-        ? "dns"
-        : /proxy/i.test(result.stderr ?? "") ? "proxy" : "process";
+      const category = /use --yes|confirm/i.test(result.stderr ?? "")
+        ? "confirmation"
+        : /authenticat|credentials|log in|login/i.test(result.stderr ?? "") ? "authentication"
+          : result.status === 6 || /resolve host|dns/i.test(result.stderr ?? "") ? "dns"
+            : /proxy/i.test(result.stderr ?? "") ? "proxy" : "process";
       throw new Error(`Vercel transport failed (${category}; exit ${result.error?.code ?? result.status ?? "unknown"}); no valid HTTP response was captured.`);
     }
     throw error;

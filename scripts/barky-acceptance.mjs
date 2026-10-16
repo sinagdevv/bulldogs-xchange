@@ -18,13 +18,13 @@ function runNpx(args) {
 
 export function buildVercelCurlArgs(deployment, path, method, correlationId, data = undefined) {
   const args = ["--yes", "vercel@64.0.2", "curl", path, "--deployment", deployment,
-    "--scope", APPROVED_SCOPE, "--trace", "--json", "--", "--silent", "--show-error",
+    "--scope", APPROVED_SCOPE, "--yes", "--trace", "--json", "--", "--silent", "--show-error",
     "--include", "--request", method, "--header", `X-Request-ID: ${correlationId}`];
   if (data) args.push("--header", "Content-Type: application/json", "--data", JSON.stringify(data));
   return args;
 }
 
-function vercelCurl(deployment, path, method, correlationId, data) {
+function vercelCurl(deployment, path, method, correlationId, data = undefined) {
   return parseVercelResult(runNpx(buildVercelCurlArgs(deployment, path, method, correlationId, data)));
 }
 

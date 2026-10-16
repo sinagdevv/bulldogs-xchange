@@ -32,6 +32,7 @@ test("retains a valid HTTP 201 response when curl exits 6", () => {
 test("keeps native curl arguments after the required separator without shell flattening", () => {
   const args = buildVercelCurlArgs("dpl_safe", "/api/barky/session", "POST", "barky-accept-session");
   assert.equal(args.includes("--"), true);
+  assert.equal(args.filter(arg => arg === "--yes").length, 2);
   assert.equal(args.includes("X-Request-ID: barky-accept-session"), true);
   assert.equal(args.includes("barky-accept-session"), false);
 });
@@ -58,6 +59,15 @@ test("rejects a JSON body without HTTP status framing", () => {
 test("classifies DNS and proxy failures without response bodies", () => {
   assert.throws(() => parseVercelResult({ status: 6, stdout: "", stderr: "Could not resolve host" }), /transport failed \(dns; exit 6\)/);
   assert.throws(() => parseVercelResult({ status: 5, stdout: "", stderr: "Could not resolve proxy" }), /transport failed \(proxy; exit 5\)/);
+});
+
+test("classifies exit 1 confirmation and missing authentication failures", () => {
+  assert.throws(() => parseVercelResult({
+    status: 1, stdout: "", stderr: "Use --yes to capture traces on production from non-interactive contexts.",
+  }), /transport failed \(confirmation; exit 1\)/);
+  assert.throws(() => parseVercelResult({
+    status: 1, stdout: "", stderr: "No existing credentials found. Please log in.",
+  }), /transport failed \(authentication; exit 1\)/);
 });
 
 test("persists the session UUID before chat without exposing it in the filename", () => {
