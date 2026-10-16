@@ -26,14 +26,16 @@ import type { SqlTransactionManager } from "../../integrations/sql-server.js";
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeSql(overrides?: Partial<SqlTransactionManager>): SqlTransactionManager & { query: Mock } {
+function makeSql(overrides?: Partial<SqlTransactionManager>): SqlTransactionManager & { query: Mock; transaction: Mock } {
+  const query = vi.fn().mockResolvedValue([]);
   return {
-    query: vi.fn().mockResolvedValue([]),
+    query,
+    transaction: vi.fn(async work => work({ query })),
     ...(overrides ?? {}),
-  } as unknown as SqlTransactionManager & { query: Mock };
+  } as unknown as SqlTransactionManager & { query: Mock; transaction: Mock };
 }
 
-function makeService(sql?: SqlTransactionManager & { query: Mock }) {
+function makeService(sql?: SqlTransactionManager & { query: Mock; transaction: Mock }) {
   const db = sql ?? makeSql();
   return { service: new BarkyService(db), db };
 }
@@ -329,7 +331,8 @@ describe("provider fallback [MOCKED]", () => {
     const result = await service.sendMessage(VALID_UUID, "Hello", null);
     expect(result.aiAvailable).toBe(false);
     expect(result.reply).toContain("AI is temporarily unavailable");
-    expect(db.query).toHaveBeenLastCalledWith(expect.stringContaining("INSERT INTO dbo.bx_barky_messages"), expect.objectContaining({ reply: result.reply }));
+    expect(db.transaction).toHaveBeenCalledOnce();
+    expect(db.query).toHaveBeenCalledWith(expect.stringContaining("'assistant'"), expect.objectContaining({ reply: result.reply }));
   });
 
   it("does not retry a 429 response", async () => {
@@ -345,6 +348,37 @@ describe("provider fallback [MOCKED]", () => {
     const result = await service.sendMessage(VALID_UUID, "Hello", null);
     expect(result.aiAvailable).toBe(false);
     expect(fetcher).toHaveBeenCalledOnce();
+  });
+
+  it("uses and persists fallback for Groq 404 followed by Mistral 429", async () => {
+    const { service, db } = makeService();
+    db.query.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: "model_not_found", type: "invalid_request_error" } }), { status: 404 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: "insufficient_quota", type: "rate_limit_error" } }), { status: 429 }));
+    vi.stubGlobal("fetch", fetcher);
+
+    const result = await service.sendMessage(VALID_UUID, "What merchandise is available?", null, "req-provider-fallback");
+    expect(result).toMatchObject({ aiAvailable: false });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(db.transaction).toHaveBeenCalledOnce();
+    expect(db.query).toHaveBeenCalledWith(expect.stringContaining("'assistant'"), expect.objectContaining({ reply: result.reply }));
+  });
+
+  it("does not report success when the atomic persistence transaction fails", async () => {
+    const transaction = vi.fn().mockRejectedValue(new AppError("EXTERNAL_SERVICE_ERROR", "Postgres query failed."));
+    const db = makeSql({ transaction });
+    const { service } = makeService(db);
+    db.query.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    delete process.env.MISTRAL_API_KEY;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ choices: [{ message: { content: "Provider reply" } }] }),
+      { status: 200 },
+    )));
+
+    await expect(service.sendMessage(VALID_UUID, "Hello", null, "req-write-failure"))
+      .rejects.toMatchObject({ code: "EXTERNAL_SERVICE_ERROR" });
+    expect(transaction).toHaveBeenCalledOnce();
   });
 
   it("retries one transient 503 then succeeds", async () => {
@@ -382,6 +416,20 @@ describe("provider fallback [MOCKED]", () => {
     // Only one fetch call — Groq succeeded, Mistral never attempted
     expect(fetcher).toHaveBeenCalledOnce();
     expect(String(fetcher.mock.calls[0]![0])).toContain("groq.com");
+    expect(db.transaction).toHaveBeenCalledOnce();
+  });
+
+  it("persists each repeated successful message in its own transaction", async () => {
+    const { service, db } = makeService();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ choices: [{ message: { content: "Available merchandise reply" } }] }),
+      { status: 200 },
+    )));
+
+    await service.sendMessage(VALID_UUID, "What merchandise is available?", null, "req-repeat-1");
+    await service.sendMessage(VALID_UUID, "What merchandise is available?", null, "req-repeat-2");
+
+    expect(db.transaction).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -427,13 +475,13 @@ describe("catalog grounding", () => {
   it("injects live SKU + price into system prompt when rows returned", async () => {
     const { service, db } = makeService();
     const catalogRow = {
-      productname: "NU Bulldogs Cap",
+      productName: "NU Bulldogs Cap",
       sku: "CAP-001",
-      variantname: "One Size",
-      variantsku: "CAP-001-OS",
+      variant: "One Size",
+      variantSku: "CAP-001-OS",
       price: 299.00,
-      physicalquantity: 10,
-      reservedquantity: 3,
+      physicalQuantity: 10,
+      reservedQuantity: 3,
     };
 
     db.query

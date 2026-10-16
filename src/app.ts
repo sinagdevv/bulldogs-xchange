@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { AppError } from "./lib/errors.js";
 import { cors, ok, secure, sendError, type RequestLike, type ResponseLike } from "./lib/http.js";
@@ -57,6 +57,9 @@ export const refreshCookie=(value:string,maxAge=60*60*24*30)=>`bx_refresh=${enco
 const accessToken=(req:RequestLike)=>/^Bearer\s+(\S+)$/i.exec(header(req.headers.authorization)??"")?.[1];
 
 export async function handle(req: RequestLike, res: ResponseLike): Promise<void> {
+  const suppliedRequestId=String(req.headers["x-request-id"]??"");
+  const requestId=/^[A-Za-z0-9._-]{1,100}$/.test(suppliedRequestId)?suppliedRequestId:randomUUID();
+  res.setHeader("X-Request-ID",requestId);
   secure(res);
   try {
     cors(req,res); if (req.method === "OPTIONS") { res.setHeader("Allow", "GET,POST,PUT,OPTIONS"); res.status(204).end?.(); return; }
@@ -143,7 +146,7 @@ export async function handle(req: RequestLike, res: ResponseLike): Promise<void>
       const session=await barky.getSession(sessionId);
       if(!session)throw new AppError("NOT_FOUND","Barky session not found.");
       if(!canAccessBarkySession(session,userId,ipHash))throw new AppError("FORBIDDEN","This session belongs to another user.");
-      const result=await barky.sendMessage(sessionId,String(message??""),userId);
+      const result=await barky.sendMessage(sessionId,String(message??""),userId,requestId);
       return void res.status(200).json(ok(result));
     }
     if(route==="barky/history"&&method==="GET"){
@@ -165,7 +168,7 @@ export async function handle(req: RequestLike, res: ResponseLike): Promise<void>
     if(parts[0]==="admin"&&parts[1]==="barky"&&method==="DELETE"&&parts[2]==="faq"&&parts[3]){await requireAdmin(auth,req);if(!barky)throw new AppError("CONFIGURATION_ERROR","Barky is not available.");await barky.deleteFaq(Number(parts[3]));return void res.status(200).json(ok({},"FAQ deleted."));}
     if(parts[0]==="admin"&&parts[1]==="barky"&&method==="GET"&&parts[2]==="insights"){await requireAdmin(auth,req);if(!barky)throw new AppError("CONFIGURATION_ERROR","Barky is not available.");return void res.status(200).json(ok(await barky.getInsights()));}
         throw new AppError("NOT_FOUND", "Route not found.");
-  } catch (error) { sendError(res, error); }
+  } catch (error) { sendError(res, error, requestId); }
 }
 const queried=(query:RequestLike["query"])=>Boolean(query&&Object.keys(query).length);
 async function staffData(route:string,query?:RequestLike["query"]):Promise<unknown>{if(route==="staff/dashboard")return analytics.getSummary();if(route==="staff/reservations")return reporting&&queried(query)?reporting.reservations(query):repository.getReservations();if(route==="staff/queue")return reporting&&queried(query)?reporting.queues(query):repository.getQueues();if(route==="staff/inventory")return analytics.getInventoryHealth();if(route==="staff/inventory/movements")return repository.getInventoryMovements();if(route==="staff/alerts")return(await analytics.getInventoryHealth()).filter(i=>i.lowStock);return undefined;}

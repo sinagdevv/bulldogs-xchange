@@ -6,7 +6,8 @@ export interface ResponseLike { status(code: number): ResponseLike; json(value: 
 export const ok = (data: unknown, message = "OK", reference: string | null = null) => ({ success: true as const, data, reference, message });
 export const fail = (code: string, message: string) => ({ success: false as const, error: { code, message } });
 
-export function sendError(res: ResponseLike, error: unknown): void {
+export function sendError(res: ResponseLike, error: unknown, requestId?: string): void {
+  if (!(error instanceof AppError)) console.error("[http] unexpected_error", { requestId, category: "unexpected", errorName: error instanceof Error ? error.name : "unknown" });
   const appError = error instanceof AppError ? error : new AppError("EXTERNAL_SERVICE_ERROR", "An unexpected error occurred.", 500);
   res.status(appError.status).json(fail(appError.code, appError.message));
 }

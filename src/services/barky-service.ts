@@ -11,9 +11,9 @@
  * - Chat history strictly bounded (10 turns = 20 rows MAX) to prevent unbounded growth
  * - Provider error messages never leak API keys or raw upstream bodies to callers
  */
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { AppError } from "../lib/errors.js";
-import type { SqlTransactionManager } from "../integrations/sql-server.js";
+import type { SqlParams, SqlTransactionManager } from "../integrations/sql-server.js";
 import { PostgresRateLimitStore } from "./auth-rate-limiter.js";
 
 // ---- Types ----------------------------------------------------------------
@@ -86,12 +86,22 @@ async function fetchWithTimeout(url: string, init: RequestInit, ms: number): Pro
   }
 }
 
+async function queryForChat<T>(sql: SqlTransactionManager, statement: string, params: SqlParams, requestId: string, phase: string): Promise<T[]> {
+  try {
+    return await sql.query<T>(statement, params);
+  } catch (err) {
+    console.error("[barky] pipeline_failed", { requestId, phase, category: "database_read", errorName: err instanceof Error ? err.name : "unknown" });
+    throw err;
+  }
+}
+
 async function callProvider(
   provider: "Groq" | "Mistral",
   url: string,
   model: string,
   key: string,
   messages: ProviderMessage[],
+  requestId: string,
 ): Promise<string> {
   let res: Response | undefined;
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -115,9 +125,11 @@ async function callProvider(
       code = typeof body.error?.code === "string" ? body.error.code.slice(0, 80) : undefined;
       type = typeof body.error?.type === "string" ? body.error.type.slice(0, 80) : undefined;
     } catch { /* no structured provider error */ }
-    const requestId = (res.headers.get("x-request-id") ?? res.headers.get("request-id"))?.slice(0, 100);
+    const providerRequestId = (res.headers.get("x-request-id") ?? res.headers.get("request-id"))?.slice(0, 100);
     const retryAfter = res.headers.get("retry-after")?.slice(0, 40);
-    console.warn(`[barky] ${provider} request failed`, { status: res.status, code, type, requestId, retryAfter });
+    console.warn("[barky] provider_failed", {
+      requestId, provider, status: res.status, code, type, providerRequestId, retryAfter,
+    });
 
     if (![502, 503, 504].includes(res.status) || attempt === 1) {
       throw new AppError(
@@ -136,7 +148,8 @@ async function callProvider(
     throw new AppError("EXTERNAL_SERVICE_ERROR", "AI provider returned an unparseable response.");
   }
 
-  const content = data.choices?.[0]?.message?.content?.trim();
+  const rawContent = data.choices?.[0]?.message?.content;
+  const content = typeof rawContent === "string" ? rawContent.trim() : "";
   if (!content) {
     throw new AppError("EXTERNAL_SERVICE_ERROR", "AI provider returned an empty response.");
   }
@@ -144,7 +157,7 @@ async function callProvider(
 }
 
 /** Primary: Groq. Fallback: Mistral. Graceful degradation when no keys are set. */
-async function chat(messages: ProviderMessage[]): Promise<string> {
+async function chat(messages: ProviderMessage[], requestId: string): Promise<string> {
   const groqKey    = process.env.GROQ_API_KEY?.trim();
   const mistralKey = process.env.MISTRAL_API_KEY?.trim();
 
@@ -154,7 +167,7 @@ async function chat(messages: ProviderMessage[]): Promise<string> {
 
   if (groqKey) {
     try {
-      return await callProvider("Groq", GROQ_URL, GROQ_MODEL, groqKey, messages);
+      return await callProvider("Groq", GROQ_URL, GROQ_MODEL, groqKey, messages, requestId);
     } catch (err) {
       if (!mistralKey) throw err;
       // Log for ops visibility, then fall through to Mistral.
@@ -163,7 +176,7 @@ async function chat(messages: ProviderMessage[]): Promise<string> {
   }
 
   if (mistralKey) {
-    return await callProvider("Mistral", MISTRAL_URL, MISTRAL_MODEL, mistralKey, messages);
+    return await callProvider("Mistral", MISTRAL_URL, MISTRAL_MODEL, mistralKey, messages, requestId);
   }
 
   throw new AppError("EXTERNAL_SERVICE_ERROR", "All AI providers are temporarily unavailable.");
@@ -217,26 +230,26 @@ const BARKY_RATE_MAX = 20;
 // ---- Catalog context from real DB records ---------------------------------
 
 interface CatalogRow {
-  productname: string;
+  productName: string;
   sku: string;
-  variantname: string;
-  variantsku: string;
+  variant: string;
+  variantSku: string;
   price: number;
-  physicalquantity: number;
-  reservedquantity: number;
+  physicalQuantity: number;
+  reservedQuantity: number;
 }
 
-async function buildCatalogContext(sql: SqlTransactionManager): Promise<string> {
+async function buildCatalogContext(sql: SqlTransactionManager, requestId: string): Promise<string> {
   try {
     const rows = await sql.query<CatalogRow>(`
       SELECT
-        p.ProductName    AS productname,
+        p.ProductName    AS productName,
         p.SKU            AS sku,
-        v.VariantName    AS variantname,
-        v.VariantSKU     AS variantsku,
+        v.VariantName    AS variant,
+        v.VariantSKU     AS variantSku,
         p.Price          AS price,
-        i.PhysicalQuantity   AS physicalquantity,
-        i.ReservedQuantity   AS reservedquantity
+        i.PhysicalQuantity   AS physicalQuantity,
+        i.ReservedQuantity   AS reservedQuantity
       FROM dbo.Products p
       JOIN dbo.ProductVariants v ON v.ProductId = p.ProductId
       JOIN dbo.Inventory i       ON i.ProductVariantId = v.ProductVariantId
@@ -253,13 +266,14 @@ async function buildCatalogContext(sql: SqlTransactionManager): Promise<string> 
 
     const lines: string[] = ["\nLive inventory (reservable online right now):"];
     for (const r of rows) {
-      const avail = r.physicalquantity - r.reservedquantity;
+      const avail = r.physicalQuantity - r.reservedQuantity;
       lines.push(
-        `- ${r.productname} / ${r.variantname} (SKU: ${r.variantsku}) — ₱${Number(r.price).toFixed(2)} — ${avail} available`,
+        `- ${r.productName} / ${r.variant} (SKU: ${r.variantSku}) — ₱${Number(r.price).toFixed(2)} — ${avail} available`,
       );
     }
     return lines.join("\n");
-  } catch {
+  } catch (err) {
+    console.warn("[barky] catalog_unavailable", { requestId, category: "database_read", errorName: err instanceof Error ? err.name : "unknown" });
     // Catalog query failure must not break chat — fall back to vague description.
     return "\nLive inventory: Check the Bulldogs Xchange website for current availability.";
   }
@@ -321,29 +335,30 @@ export class BarkyService {
     sessionId: string,
     userMessage: string,
     userId: number | null,
+    requestId: string = randomUUID(),
   ): Promise<ChatResponse> {
     const clean = sanitizeInput(userMessage);
     if (!clean) throw new AppError("VALIDATION_ERROR", "Message cannot be empty.");
 
     // Load recent history — bounded to last 10 turns (20 rows) to prevent unbounded context.
-    const history = await this.sql.query<{ role: string; content: string }>(`
+    const history = await queryForChat<{ role: string; content: string }>(this.sql, `
       SELECT role, content FROM dbo.bx_barky_messages
       WHERE session_id = @sessionId
       ORDER BY created_at DESC LIMIT 20
-    `, { sessionId });
+    `, { sessionId }, requestId, "history_read");
     history.reverse();
 
     // Active FAQs injected into system context (admin-curated, admin-controlled).
-    const faqs = await this.sql.query<{ question: string; answer: string }>(`
+    const faqs = await queryForChat<{ question: string; answer: string }>(this.sql, `
       SELECT question, answer FROM dbo.bx_barky_faq
       WHERE is_active = true ORDER BY id LIMIT 20
-    `);
+    `, {}, requestId, "faq_read");
     const faqSection = faqs.length
       ? `\nAdmin-curated FAQs:\n${faqs.map(f => `Q: ${f.question}\nA: ${f.answer}`).join("\n\n")}`
       : "";
 
     // Real catalog context from database — never hardcoded.
-    const catalogSection = await buildCatalogContext(this.sql);
+    const catalogSection = await buildCatalogContext(this.sql, requestId);
 
     const systemContent = STATIC_SYSTEM_PROMPT + catalogSection + faqSection;
 
@@ -356,24 +371,27 @@ export class BarkyService {
     let aiAvailable = true;
     let reply: string;
     try {
-      reply = await chat(messages);
+      reply = await chat(messages, requestId);
     } catch (err) {
       if (!(err instanceof AppError) || err.code !== "EXTERNAL_SERVICE_ERROR") throw err;
       aiAvailable = false;
+      console.warn("[barky] fallback_used", { requestId, category: "provider_unavailable" });
       const exactFaq = faqs.find(f => f.question.trim().toLowerCase() === clean.toLowerCase());
       reply = exactFaq?.answer
         ?? "Barky's AI is temporarily unavailable. Please use the live catalog for current merchandise availability or contact the Xchange team.";
     }
 
-    // Persist both turns atomically-ish (sequential inserts; not critical-path transactional).
-    const msgId = crypto.randomUUID();
-    await this.sql.query(`
-      INSERT INTO dbo.bx_barky_messages (session_id, role, content)
-      VALUES (@sessionId, 'user', @userMsg);
-      INSERT INTO dbo.bx_barky_messages (id, session_id, role, content)
-      VALUES (@msgId, @sessionId, 'assistant', @reply);
-      UPDATE dbo.bx_barky_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = @sessionId
-    `, { sessionId, userMsg: clean, msgId, reply });
+    const msgId = randomUUID();
+    try {
+      await this.sql.transaction(async tx => {
+        await tx.query(`INSERT INTO dbo.bx_barky_messages (session_id, role, content) VALUES (@sessionId, 'user', @userMsg)`, { sessionId, userMsg: clean });
+        await tx.query(`INSERT INTO dbo.bx_barky_messages (id, session_id, role, content) VALUES (@msgId, @sessionId, 'assistant', @reply)`, { sessionId, msgId, reply });
+        await tx.query(`UPDATE dbo.bx_barky_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = @sessionId`, { sessionId });
+      });
+    } catch (err) {
+      console.error("[barky] persistence_failed", { requestId, category: "database_write", errorName: err instanceof Error ? err.name : "unknown" });
+      throw err;
+    }
 
     return { reply, sessionId, messageId: msgId, aiAvailable };
   }
