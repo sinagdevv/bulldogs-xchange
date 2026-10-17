@@ -28,12 +28,13 @@ export class OperatorAdminBootstrapService{
   promote(input:OperatorBootstrapInput){return this.db.transaction(async db=>{
     const admins=await db.query<Row>("SELECT u.UserId FROM dbo.Users u WITH (UPDLOCK,HOLDLOCK) JOIN dbo.Roles r ON r.RoleId=u.RoleId WHERE u.IsActive=1 AND r.RoleName='Admin'");
     if(admins.length)throw new AppError("CONFLICT","An active Admin already exists.");
-    const rows=await db.query<Row>("SELECT u.UserId,u.SchoolId,u.FullName,u.Email,u.IsActive,r.RoleName FROM dbo.Users u WITH (UPDLOCK,HOLDLOCK) JOIN dbo.Roles r ON r.RoleId=u.RoleId WHERE u.UserId=@userId",{userId:input.targetUserId});
+    const rows=await db.query<Row>("SELECT u.UserId,u.SchoolId,u.FullName,u.Email,u.IsActive,u.ApprovalStatus,r.RoleName FROM dbo.Users u WITH (UPDLOCK,HOLDLOCK) JOIN dbo.Roles r ON r.RoleId=u.RoleId WHERE u.UserId=@userId",{userId:input.targetUserId});
     const user=rows[0];
-    if(!user||Number(user.UserId)!==input.targetUserId||String(user.Email).toLowerCase()!==input.email||String(user.SchoolId)!==input.schoolId||user.RoleName!=="Customer"||!user.IsActive)throw new AppError("FORBIDDEN","Database account does not match the intended active Customer.");
-    await db.query("UPDATE dbo.Users SET RoleId=(SELECT RoleId FROM dbo.Roles WHERE RoleName='Admin'),UpdatedAt=SYSUTCDATETIME() WHERE UserId=@userId",{userId:input.targetUserId});
+    if(!user||Number(user.UserId)!==input.targetUserId||String(user.Email).toLowerCase()!==input.email||String(user.SchoolId)!==input.schoolId||user.RoleName!=="Customer"||user.ApprovalStatus!=="pending"||!user.IsActive)throw new AppError("FORBIDDEN","Database account does not match the intended active pending Customer.");
+    await db.query("UPDATE dbo.Users SET RoleId=(SELECT RoleId FROM dbo.Roles WHERE RoleName='Admin'),ApprovalStatus='approved',RejectionReason=NULL,UpdatedAt=SYSUTCDATETIME() WHERE UserId=@userId",{userId:input.targetUserId});
+    await db.query("INSERT dbo.ApprovalHistory(AccountUserId,Action,ActingAdminUserId,Reason) VALUES(@userId,'approved',NULL,'Initial Admin bootstrap')",{userId:input.targetUserId});
     await this.audit(db,input.targetUserId,input.email);
-    return{id:String(input.targetUserId),email:input.email,role:"Admin" as const,isActive:true};
+    return{id:String(input.targetUserId),email:input.email,role:"Admin" as const,approvalStatus:"approved" as const,isActive:true};
   });}
-  private audit(db:SqlExecutor,userId:number,email:string){return db.query("INSERT dbo.AuditLogs(UserId,Action,Entity,EntityId,PreviousValue,NewValue) VALUES(@userId,'BootstrapAdmin','User',@entityId,@previous,@next)",{userId,entityId:String(userId),previous:JSON.stringify({role:"Customer"}),next:JSON.stringify({role:"Admin",email})});}
+  private audit(db:SqlExecutor,userId:number,email:string){return db.query("INSERT dbo.AuditLogs(UserId,Action,Entity,EntityId,PreviousValue,NewValue) VALUES(@userId,'BootstrapAdmin','User',@entityId,@previous,@next)",{userId,entityId:String(userId),previous:JSON.stringify({role:"Customer",approvalStatus:"pending"}),next:JSON.stringify({role:"Admin",approvalStatus:"approved",email})});}
 }

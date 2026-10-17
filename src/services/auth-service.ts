@@ -8,6 +8,12 @@ export class AuthService {
   constructor(private repo: SharePointRepository,private provider:AuthProvider=new SupabaseAuthProvider()) {}
 
   async getCurrentUser(req: RequestLike): Promise<User | null> {
+    const user=await this.getSessionUser(req);
+    if(user)this.ensureApproved(user);
+    return user;
+  }
+
+  async getSessionUser(req: RequestLike): Promise<User | null> {
     const production=process.env.VERCEL_ENV==="production"||process.env.NODE_ENV==="production";
     if(production&&process.env.ENABLE_DEV_AUTH==="true")throw new AppError("CONFIGURATION_ERROR","Development authentication is disabled in production.");
     const devEmail=!production&&process.env.LOCAL_DEMO!=="true"&&process.env.ENABLE_DEV_AUTH==="true"?String(req.headers["x-dev-user"]??process.env.DEV_AUTH_EMAIL??"").trim().toLowerCase():"";
@@ -15,7 +21,6 @@ export class AuthService {
     if(!principal)return null;
     const user=devEmail||principal.subject.startsWith("local:")?await this.repo.getUserByEmail(principal.email.trim().toLowerCase()):await this.repo.getUserByAuthSubject(principal.subject)??await this.repo.getUserByEmail(principal.email.trim().toLowerCase());
     if(!user)throw new AppError("FORBIDDEN","Authenticated identity is not registered.");
-    this.ensureApproved(user);
     return user;
   }
 
