@@ -3,6 +3,7 @@ export const INVITATION_PATH="/auth/invite";
 
 /** Returns the access token only from a provider password-recovery callback hash. */
 export function recoveryAccessToken(hash:string){const params=new URLSearchParams(hash.startsWith("#")?hash.slice(1):hash);return params.get("type")==="recovery"?params.get("access_token"):null;}
+export function recoveryTokenHash(hash:string){const params=new URLSearchParams(hash.startsWith("#")?hash.slice(1):hash);return params.get("type")==="recovery"?params.get("token_hash"):null;}
 
 /**
  * Pure decision for where a landing location should go once Supabase's /verify redirect lands.
@@ -43,6 +44,15 @@ export const capturedRecoveryToken:string|null=(()=>{
   const search=landing.path===window.location.pathname?window.location.search:"";
   window.history.replaceState(null,"",`${landing.path}${search}`);
   return landing.token;
+})();
+
+/** A template-supplied hash is inert until the user explicitly confirms the reset. */
+export const capturedRecoveryTokenHash:string|null=(()=>{
+  if(typeof window==="undefined")return null;
+  const tokenHash=recoveryTokenHash(window.location.hash);
+  if(!tokenHash)return null;
+  window.history.replaceState(null,"",RECOVERY_PATH);
+  return tokenHash;
 })();
 
 const capturedInvite=(()=>{
