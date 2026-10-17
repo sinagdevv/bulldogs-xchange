@@ -1,4 +1,5 @@
 export const RECOVERY_PATH="/auth/recovery";
+export const INVITATION_PATH="/auth/invite";
 
 /** Returns the access token only from a provider password-recovery callback hash. */
 export function recoveryAccessToken(hash:string){const params=new URLSearchParams(hash.startsWith("#")?hash.slice(1):hash);return params.get("type")==="recovery"?params.get("access_token"):null;}
@@ -20,6 +21,14 @@ export function recoveryLanding(pathname:string,hash:string):{token:string;path:
   return {token,path:pathname===RECOVERY_PATH?pathname:RECOVERY_PATH};
 }
 
+/** Handles successful and rejected provider invite callbacks without retaining provider details. */
+export function inviteLanding(pathname:string,hash:string,search:string):{token:string|null;path:string;invalid:boolean}|null{
+  const params=new URLSearchParams(hash.startsWith("#")?hash.slice(1):hash),token=params.get("type")==="invite"?params.get("access_token"):null;
+  if(token)return {token,path:pathname===INVITATION_PATH?pathname:INVITATION_PATH,invalid:false};
+  const query=new URLSearchParams(search.startsWith("?")?search.slice(1):search);
+  return query.get("error_code")==="otp_expired"?{token:null,path:INVITATION_PATH,invalid:true}:null;
+}
+
 /**
  * Captured once, at module load, from whichever location Supabase's /verify redirect actually
  * landed on (see recoveryLanding above for why that may not be /auth/recovery). The token is
@@ -35,3 +44,12 @@ export const capturedRecoveryToken:string|null=(()=>{
   window.history.replaceState(null,"",`${landing.path}${search}`);
   return landing.token;
 })();
+
+const capturedInvite=(()=>{
+  if(typeof window==="undefined")return null;
+  const landing=inviteLanding(window.location.pathname,window.location.hash,window.location.search);
+  if(!landing)return null;
+  window.history.replaceState(null,"",`${landing.path}${landing.invalid?"?error=link":""}`);
+  return landing;
+})();
+export const capturedInviteToken=capturedInvite?.token??null;

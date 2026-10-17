@@ -24,6 +24,7 @@ const guarded=(role:Role,node:ReactNode)=><RequireRole roles={role==="Staff"?["S
 
 export default function App(){return <SessionProvider><ToastProvider><BrowserRouter><AuthRedirect/><Routes>
   <Route path="auth/recovery" element={<PasswordRecovery/>}/>
+  <Route path="auth/invite" element={<PasswordRecovery flow="invite"/>}/>
   <Route element={<PublicLayout/>}><Route index element={<Landing/>}/><Route path="catalog" element={<Catalog/>}/><Route path="how-it-works" element={<InfoPage/>}/><Route path="campus-pickup" element={<Navigate to={{pathname:"/how-it-works",hash:"pickup"}} replace/>}/></Route>
   <Route element={<AppLayout role="Customer"/>}><Route path="home" element={guarded("Customer",<CustomerHome/>)}/><Route path="shop" element={guarded("Customer",<CustomerCatalog/>)}/><Route path="shop/:id" element={guarded("Customer",<CustomerProductDetails/>)}/><Route path="reservations" element={guarded("Customer",<Reservations/>)}/><Route path="reservations/:id" element={guarded("Customer",<ReservationDetails/>)}/><Route path="queue" element={guarded("Customer",<Queue/>)}/><Route path="notifications" element={guarded("Customer",<Notifications/>)}/><Route path="profile" element={guarded("Customer",<Profile/>)}/></Route>
   <Route element={<AppLayout role="Staff"/>}><Route path="staff" element={guarded("Staff",<Dashboard role="Staff"/>)}/>{modules.filter(x=>x.role==="Staff").map(x=><Route key={x.path} path={x.path} element={guarded(x.role,x.element)}/>)}</Route>
