@@ -7,7 +7,7 @@ import {SessionContext,type SessionState} from "./session-context";
 import type {Session,User} from "./types";
 
 const user:User={id:"1",email:"student@students.nu-fairview.edu.ph",displayName:"Student",role:"Customer"};
-const state=(session:Session|null,authOpen=false):SessionState=>({session,loading:false,error:null,authOpen,api:{} as SessionState["api"],login:vi.fn(),register:vi.fn(),requestPasswordReset:vi.fn(),openAuth:vi.fn(),closeAuth:vi.fn(),logout:vi.fn(),reload:vi.fn()});
+const state=(session:Session|null,authOpen=false):SessionState=>({session,loading:false,error:null,authOpen,api:{} as SessionState["api"],login:vi.fn(),loginOtp:vi.fn(),requestOtp:vi.fn(),register:vi.fn(),requestPasswordReset:vi.fn(),openAuth:vi.fn(),closeAuth:vi.fn(),logout:vi.fn(),reload:vi.fn()});
 const render=(node:React.ReactNode,value:SessionState)=>renderToStaticMarkup(<SessionContext.Provider value={value}><MemoryRouter>{node}</MemoryRouter></SessionContext.Provider>);
 
 describe("authentication navigation",()=>{

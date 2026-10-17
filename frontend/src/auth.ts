@@ -2,7 +2,7 @@ import type {User} from "./types";
 import {isStaticPreview,previewUnavailable} from "./deployment-mode";
 import {createFixtureAuthAdapter,fixtureAuthMode} from "./fixture-auth-runtime";
 export interface Registration{studentId:string;fullName:string;password:string;confirmPassword:string}
-export interface AuthAdapter{getAccessToken(signal?:AbortSignal):Promise<string|null>;getFixtureUser():User|null;login(email:string,password:string):Promise<void>;register(input:Registration):Promise<void>;requestPasswordReset(email:string):Promise<void>;logout():Promise<void>}
+export interface AuthAdapter{getAccessToken(signal?:AbortSignal):Promise<string|null>;getFixtureUser():User|null;login(email:string,password:string):Promise<void>;requestOtp(email:string):Promise<void>;verifyOtp(email:string,token:string):Promise<void>;register(input:Registration):Promise<void>;requestPasswordReset(email:string):Promise<void>;logout():Promise<void>}
 type Envelope<T>={success:boolean;data?:T;error?:{message:string}};
 export class SupabaseAuthAdapter implements AuthAdapter{
   private accessToken:string|null=null;
@@ -12,6 +12,8 @@ export class SupabaseAuthAdapter implements AuthAdapter{
   constructor(private baseUrl=import.meta.env.VITE_API_BASE_URL??"/api"){}
   async getAccessToken(){if(isStaticPreview)return null;if(this.accessToken&&Date.now()<this.expiresAt-30_000)return this.accessToken;if(this.refreshPromise)return this.refreshPromise;if(!this.accessToken&&this.restoreAttempted)return null;this.restoreAttempted=true;return this.refreshPromise=this.refresh().finally(()=>{this.refreshPromise=null});}
   async login(identity:string,password:string){if(isStaticPreview)throw new Error(previewUnavailable);const data=await this.post<{accessToken:string;expiresIn:number}>("auth/login",{identity,password});this.setSession(data);}
+  async requestOtp(email:string){if(isStaticPreview)throw new Error(previewUnavailable);await this.post("auth/otp",{email});}
+  async verifyOtp(email:string,token:string){if(isStaticPreview)throw new Error(previewUnavailable);const data=await this.post<{accessToken:string;expiresIn:number}>("auth/otp/verify",{email,token});this.setSession(data);}
   async register(input:Registration){if(isStaticPreview)throw new Error(previewUnavailable);await this.post("auth/register",input);}
   async requestPasswordReset(identity:string){if(isStaticPreview)throw new Error(previewUnavailable);await this.post("auth/recovery",{identity});}
   async logout(){try{if(!isStaticPreview)await this.post("auth/logout",undefined,this.accessToken?{authorization:`Bearer ${this.accessToken}`}:{})}finally{this.accessToken=null;this.expiresAt=0;this.restoreAttempted=true;}}

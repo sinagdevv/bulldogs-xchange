@@ -2,7 +2,7 @@ import {afterEach,describe,expect,it,vi} from "vitest";
 import {ApiClient} from "./api";
 import type {AuthAdapter} from "./auth";
 
-const auth:AuthAdapter={getAccessToken:async()=>"token",getFixtureUser:()=>null,login:async()=>{},register:async()=>{},requestPasswordReset:async()=>{},logout:async()=>{}};
+const auth:AuthAdapter={getAccessToken:async()=>"token",getFixtureUser:()=>null,login:async()=>{},requestOtp:async()=>{},verifyOtp:async()=>{},register:async()=>{},requestPasswordReset:async()=>{},logout:async()=>{}};
 afterEach(()=>vi.unstubAllGlobals());
 describe("API errors",()=>{
   it("preserves backend error codes and messages",async()=>{vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({success:false,error:{code:"INSUFFICIENT_STOCK",message:"Only one remains."}}),{status:409})));await expect(new ApiClient(auth,"/api").request("reservations")).rejects.toMatchObject({code:"INSUFFICIENT_STOCK",message:"Only one remains.",status:409});});
