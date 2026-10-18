@@ -530,7 +530,7 @@ a.list-row:hover{background:var(--subtle)}
 .barky-live-dot{width:9px;height:9px;border-radius:50%;background:#4ade80;border:2px solid rgba(255,255,255,.25);box-shadow:0 0 0 3px rgba(74,222,128,.25);flex-shrink:0;align-self:flex-start;margin-top:4px}
 
 /* ---- Panel ---- */
-.barky-panel{position:fixed;bottom:24px;right:24px;z-index:900;width:min(400px,calc(100vw - 28px));max-height:min(640px,calc(100dvh - 72px));background:var(--surface);border:1.5px solid var(--line);border-radius:20px;box-shadow:0 12px 56px rgba(0,0,0,.22),0 2px 8px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}animation:barkyPopIn .38s cubic-bezier(.22,1.4,.4,1) both}
+.barky-panel{position:fixed;bottom:24px;right:24px;z-index:900;width:min(400px,calc(100vw - 28px));max-height:min(640px,calc(100dvh - 72px));background:var(--surface);border:1.5px solid var(--line);border-radius:20px;box-shadow:0 12px 56px rgba(0,0,0,.22),0 2px 8px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden;animation:barkyPopIn .38s cubic-bezier(.22,1.4,.4,1) both}
 @keyframes barkyPopIn{0%{opacity:0;transform:translateY(18px) scale(.9)}65%{opacity:1;transform:translateY(-3px) scale(1.015)}100%{opacity:1;transform:translateY(0) scale(1)}}
 
 /* ---- Header ---- */
@@ -614,18 +614,45 @@ a.list-row:hover{background:var(--subtle)}
 .barky-send:hover:not(:disabled){background:#FFD700;color:#1a3a6e;transform:scale(1.08);box-shadow:0 2px 10px rgba(255,215,0,.4)}
 .barky-send:disabled{opacity:.38;cursor:not-allowed}
 
-/* ---- Mascot animations ---- */
-@keyframes barkyBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+/* ---- Mascot state animations (rubber-hose squash/stretch, one keyframe set per state) ---- */
+@keyframes barkyBreathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.035,.97)}}
 @keyframes barkyWave{0%,100%{transform:rotate(0deg)}30%{transform:rotate(22deg)}60%{transform:rotate(-10deg)}}
-.barky-breathe{animation:barkyBreathe 3s ease-in-out infinite}
-.barky-wave{animation:barkyWave 1.3s ease-in-out infinite}
+@keyframes barkyHappyBounce{0%,100%{transform:rotate(0) scale(1,1)}20%{transform:rotate(-8deg) scale(1.06,.94)}50%{transform:rotate(10deg) scale(.95,1.07)}80%{transform:rotate(-4deg) scale(1.02,.98)}}
+@keyframes barkyBlink{0%,90%,100%{transform:scaleY(1)}95%{transform:scaleY(.08)}}
+@keyframes barkyThinkEyes{0%,100%{transform:scaleY(.55) translateY(1px)}50%{transform:scaleY(.68) translateY(-1px)}}
+@keyframes barkyBob{0%,100%{transform:translateY(0) scale(1,1)}50%{transform:translateY(-2.5px) scale(1.02,.98)}}
+@keyframes barkyNod{0%{transform:translateY(0) scale(1,1)}30%{transform:translateY(-3px) scale(1.05,.95)}60%{transform:translateY(1px) scale(.97,1.04)}100%{transform:translateY(0) scale(1,1)}}
+@keyframes barkyTalk{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.55)}}
+@keyframes barkyDroopL{to{transform:rotate(-26deg) translate(-1px,2px)}}
+@keyframes barkyDroopR{to{transform:rotate(26deg) translate(1px,2px)}}
+@keyframes barkySweatDrop{0%{opacity:0;transform:translateY(-2px)}25%{opacity:1}100%{opacity:0;transform:translateY(7px)}}
+
+.barky-mascot-idle{animation:barkyBreathe 3s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 60%}
+.barky-mascot-idle .barky-eye{animation:barkyBlink 4.6s ease-in-out infinite}
+.barky-mascot-idle .barky-eye-r{animation-delay:.08s}
+
+.barky-mascot-happy{animation:barkyHappyBounce 1.1s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 70%}
+.barky-mascot-happy .barky-eye{animation:barkyBlink 4.6s ease-in-out infinite}
+.barky-paw{transform-origin:63px 53px;animation:barkyWave 1.3s ease-in-out infinite}
+
+.barky-mascot-thinking{animation:barkyBob 1.8s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 60%}
+.barky-mascot-thinking .barky-eye{animation:barkyThinkEyes 1.8s ease-in-out infinite}
 .barky-think-1{animation:barkyDot 1.2s ease-in-out infinite}
 .barky-think-2{animation:barkyDot 1.2s ease-in-out infinite;animation-delay:.2s}
 .barky-think-3{animation:barkyDot 1.2s ease-in-out infinite;animation-delay:.4s}
-.barky-paw{transform-origin:63px 53px;animation:barkyWave 1.3s ease-in-out infinite}
+
+.barky-mascot-responding{animation:barkyNod .5s ease-out 1;transform-box:fill-box;transform-origin:50% 60%}
+.barky-mascot-responding .barky-mouth{animation:barkyTalk .45s ease-in-out 2;transform-box:fill-box;transform-origin:50% 50%}
+
+.barky-mascot-error .barky-ear-l{animation:barkyDroopL .4s ease-out forwards;transform-box:fill-box;transform-origin:50% 30%}
+.barky-mascot-error .barky-ear-r{animation:barkyDroopR .4s ease-out forwards;transform-box:fill-box;transform-origin:50% 30%}
+.barky-mascot-error .barky-sweat{animation:barkySweatDrop 1.4s ease-in infinite}
+
+.barky-eye,.barky-mouth,.barky-ear-l,.barky-ear-r{transform-box:fill-box;transform-origin:center}
+.barky-avatar-error{flex-shrink:0}
 
 /* ---- Reduced motion ---- */
-@media (prefers-reduced-motion:reduce){.barky-breathe,.barky-wave,.barky-paw,.barky-think-1,.barky-think-2,.barky-think-3,.barky-typing span,.barky-dots span,.barky-status-dot{animation:none}}
+@media (prefers-reduced-motion:reduce){.barky-mascot-idle,.barky-mascot-happy,.barky-mascot-thinking,.barky-mascot-responding,.barky-eye,.barky-mouth,.barky-ear-l,.barky-ear-r,.barky-paw,.barky-think-1,.barky-think-2,.barky-think-3,.barky-sweat,.barky-typing span,.barky-dots span,.barky-status-dot{animation:none}}
 
 /* ---- Mobile ---- */
 @media (max-width:600px){
