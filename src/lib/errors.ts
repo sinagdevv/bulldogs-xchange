@@ -2,6 +2,8 @@ export type ErrorCode = "VALIDATION_ERROR" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT
 
 const statuses: Record<ErrorCode, number> = { VALIDATION_ERROR: 400, UNAUTHORIZED: 401, FORBIDDEN: 403, NOT_FOUND: 404, NOT_IMPLEMENTED: 501, CONFLICT: 409, EXPORT_LIMIT_EXCEEDED:413, LAST_ADMIN_PROTECTED: 409, INACTIVE_USER: 403, PRODUCT_INACTIVE: 409, VARIANT_INACTIVE: 409, INSUFFICIENT_STOCK: 409, INVALID_RESERVATION_STATUS: 409, RESERVATION_EXPIRED: 409, RESERVATION_ALREADY_CANCELLED: 409, QUEUE_ALREADY_JOINED: 409, QUEUE_NOT_FOUND: 404, INVALID_QUEUE_ACTION: 409, TRANSACTION_ALREADY_COMPLETED: 409, INVENTORY_CONFLICT: 409, EXTERNAL_SERVICE_ERROR: 502, CONFIGURATION_ERROR: 500 };
 
+export type SafeFailureDiagnostic = Readonly<{stage?:string;code?:string;category?:string;operation?:string;relation?:string;schema?:string;table?:string;column?:string;constraint?:string}>;
+
 export class AppError extends Error {
-  constructor(public code: ErrorCode, message: string, public status = statuses[code]) { super(message); }
+  constructor(public code: ErrorCode, message: string, public status = statuses[code], public diagnostic?: SafeFailureDiagnostic) { super(message); }
 }
