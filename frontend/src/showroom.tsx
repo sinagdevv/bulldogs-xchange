@@ -151,7 +151,7 @@ export function ApparelRack(){
           {rack.map((p,i)=><li key={p.id} style={vars({"--i":i})}>
             <button type="button" data-piece className={`sr-garment${sel===p.id?" on":""}`} aria-pressed={sel===p.id} onClick={()=>setSel(p.id)}>
               <Hanger/>
-              <span className="sr-cloth" style={vars({"--img":`url(${p.src})`})}><img src={p.src} alt="" width="600" height="600" loading="lazy" decoding="async" draggable={false}/></span>
+              <span className="sr-cloth" style={vars({"--img":`url(${p.src})`})}><img src={p.src} alt="" width="600" height="600" loading={i<3?"eager":"lazy"} decoding="async" draggable={false}/><i className="sr-select-badge" aria-hidden="true"><Icon name="check"/></i></span>
               <span className="sr-tag"><b>{p.name}</b>{p.approved&&<Seal/>}</span>
             </button>
           </li>)}
@@ -174,9 +174,9 @@ export function AccessoriesCabinet(){
         <div className="sr-cab-sign" aria-hidden="true"><img src="/nu-crest.png" alt="" width="28" height="28"/><span>Bulldogs Xchange</span></div>
         <div className="sr-cab-glass">
         {shelves.map(s=><div className="sr-shelf" key={s.label} role="group" aria-label={s.label} onKeyDown={moveFocus}>
-          <ul>{s.items.map(p=><li key={p.id}>
+          <ul>{s.items.map((p,i)=><li key={p.id}>
             <button type="button" data-piece className={`sr-item${sel===p.id?" on":""}`} aria-pressed={sel===p.id} onClick={()=>setSel(p.id)}>
-              <span className={`sr-obj${p.opaque?" opaque":""}`}><img src={p.src} alt="" width="600" height="600" loading="lazy" decoding="async"/></span>
+              <span className={`sr-obj${p.opaque?" opaque":""}`}><img src={p.src} alt="" width="600" height="600" loading={i<3?"eager":"lazy"} decoding="async"/><i className="sr-select-badge" aria-hidden="true"><Icon name="check"/></i></span>
               <span className="sr-label"><b>{p.name}</b>{p.approved&&<Seal/>}</span>
             </button>
           </li>)}</ul>

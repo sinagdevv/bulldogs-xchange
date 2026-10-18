@@ -26,4 +26,21 @@ describe("Bulldogs Showroom catalog boundary",()=>{
     const liveHtml=render(<FocusPanel piece={{id:"s",name:"NU Bulldogs Shirt",line:"Official campus tee",src:"/images/products/approved/MER-TSH-001-FRONT.webp",approved:true,note:"Live."}}/>);
     expect(liveHtml.match(/<a /g)).toHaveLength(1);expect(liveHtml).toContain('href="/catalog"');expect(liveHtml).toContain("Available to reserve");
   });
+  it("marks exactly one garment and one accessory as pressed by default, with a selection badge on every piece",()=>{
+    const rack=render(<ApparelRack/>),cab=render(<AccessoriesCabinet/>);
+    expect(rack.match(/aria-pressed="true"/g)).toHaveLength(1);
+    expect(cab.match(/aria-pressed="true"/g)).toHaveLength(1);
+    // Every piece renders the badge element (CSS, not a conditional class, controls visibility) --
+    // this keeps the selected/unselected markup stable and lets CSS alone gate opacity.
+    expect(rack.match(/class="sr-select-badge"/g)?.length).toBe(7);
+    expect(cab.match(/class="sr-select-badge"/g)?.length).toBe(8);
+  });
+  it("selection badge never appears alongside reservation wording for a non-reservable piece",()=>{
+    // A collection-only piece (approved:false) must never render the reservable seal or its
+    // "Available to reserve" text in its own tag, regardless of selection state.
+    const html=render(<ApparelRack/>);
+    const jacketLi=html.match(/<li style="--i:0">.*?<\/li>/)?.[0];
+    expect(jacketLi).toContain("Varsity Jacket");
+    expect(jacketLi).not.toMatch(/sr-seal|Available to reserve/);
+  });
 });
