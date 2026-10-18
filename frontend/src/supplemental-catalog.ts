@@ -19,7 +19,6 @@ export const supplementalCategories: Category[] = [
   {id: "supp-tm",   title: "Tourism Management",     isActive: true},
   {id: "supp-psy",  title: "Psychology",              isActive: true},
   {id: "supp-hm",   title: "Hospitality Management",  isActive: true},
-  {id: "supp-trad", title: "Traditional (College/SHS)", isActive: true},
 ];
 
 const showcase = (file: string) => `/images/products/showcase/${file}`;
@@ -172,31 +171,14 @@ export const supplementalProducts: Product[] = [
   },
 
   // ── TRADITIONAL UNIFORM (TRAD) ───────────────────────────────────────────
-  // Note: TRAD-PANT-001-{F,M}-{COL,SHS} were removed here (2026-10 dedup pass) --
-  // they duplicated the official DB products COL-PANTS-F/M and SHS-PANTS-F/M
-  // (same program, same gender, same garment). TRAD-SKRT-001 and TRAD-TOP-001/002
-  // have no exact official counterpart and remain as genuinely unique listings.
-  {
-    id: "supp-TRAD-SKRT-001", sku: "TRAD-SKRT-001",
-    title: "Traditional Skirt", categoryId: "supp-trad",
-    description: "Traditional uniform skirt (College/SHS).",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("TRAD-SKRT-001-FRONT-CUTOUT.webp"),
-    isFeatured: false, isActive: true, supplemental: true,
-  },
-  {
-    id: "supp-TRAD-TOP-001", sku: "TRAD-TOP-001",
-    title: "Traditional Top", categoryId: "supp-trad",
-    description: "Traditional uniform top.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("TRAD-TOP-001-FRONT-CUTOUT.webp"),
-    isFeatured: false, isActive: true, supplemental: true,
-  },
-  {
-    id: "supp-TRAD-TOP-002", sku: "TRAD-TOP-002",
-    title: "Traditional Top (variant)", categoryId: "supp-trad",
-    description: "Traditional uniform top — alternate style.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("TRAD-TOP-002-FRONT-CUTOUT.webp"),
-    isFeatured: false, isActive: true, supplemental: true,
-  },
+  // 2026-10 pass: the whole TRAD group was removed. TRAD-SKRT-001 is hidden
+  // per explicit request. TRAD-TOP-001/002 were visually compared against the
+  // official product photos and are the same garments as COL-BLSE-F (female
+  // blouse, identical NJ-1900 shield, piping and cut) and COL-POLO-M (male
+  // polo, identical shield and collar) -- genuine duplicates, official DB
+  // entries take precedence. With all three gone the "Traditional
+  // (College/SHS)" category is empty and has been removed below; there was
+  // nothing left to reassign to the College/SHS filters.
 ];
 
 /** Returns true when id belongs to a supplemental (non-DB) product. */
