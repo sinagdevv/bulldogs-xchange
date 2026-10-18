@@ -6,47 +6,38 @@
 -- operator has:
 --   1. Confirmed `current_database()`/project ref match qyzwruvggwxbmqrurmxh
 --      (never miwodndxgrdyanrloxig).
---   2. Read the dry-run report accompanying this file.
+--   2. Read the accompanying dry-run / impact report.
 --   3. Given explicit written authorization to proceed.
 --
--- Scope: Task 2 (15 synthetic students) and the non-financial half of Task 3
--- (reservations, queue, inventory movements, audit trail) from the
--- "FINAL LIVE DEMO DATA + REAL USERS + RELEASE" request.
+-- Revision note (per explicit instruction, overriding this file's original
+-- v1 comment): this deployment is a demonstration system, not the school's
+-- operational sales system. Synthetic completed sales are INTENTIONALLY
+-- written as ordinary dbo.transactions rows and WILL contribute to Total
+-- Revenue / Total Sales / Sales Trends / Best-Selling Products / Financial
+-- Reports exactly like a real sale would. No isdemo column, no reporting
+-- filter, no revenue isolation. That is the explicit, informed choice of
+-- the person who owns this deployment, made after the isolation trade-off
+-- was explained -- not an oversight.
 --
--- Deliberately EXCLUDED: dbo.transactions / dbo.transactionitems rows.
--- sql-reporting-service.ts and financial-reporting-service.ts SUM every row
--- in dbo.Transactions with no demo/synthetic filter (confirmed by reading
--- both files) -- inserting demo transactions here would silently inflate
--- the real "recordedSales"/"CompletedSales" figures Admin reports show,
--- which the task itself forbids ("do not mix synthetic revenue into actual
--- operational revenue without visible distinction"). That needs a small
--- reviewed migration (an `isdemo` column + two reporting-query filters)
--- BEFORE any demo transaction is inserted. See the companion note at the
--- bottom of this file. Nothing below touches dbo.transactions.
+-- Isolation that IS still kept: a dedicated "Demo Presentation Catalog"
+-- category/products/variants/inventory, so nothing here touches the real
+-- SharePoint catalog, its 79 variants, or its stock. Demo students use the
+-- DEMO- SchoolId prefix and .invalid email domain so they can never
+-- collide with a real classmate and never receive real mail.
 --
--- Isolation: a dedicated "Demo Presentation Catalog" category/products/
--- variants/inventory, so nothing here ever touches the real SharePoint
--- catalog, its 79 variants, or its stock -- mirrors the existing
--- database/postgres/003_local_demo_fixture.sql convention, applied here to
--- the approved project instead of a local Docker instance.
---
--- Idempotent: every statement guards on a unique constraint or an explicit
--- existence check, so re-running this script after a partial or full
--- previous run inserts nothing twice.
+-- Idempotent: every INSERT guards on a unique constraint or an explicit
+-- existence check. The two inventory UPDATEs are additionally gated by a
+-- one-time systemsettings marker (set at the very end of this script) so
+-- a second run changes no quantities, even on a slow or retried execution.
 -- ============================================================================
 BEGIN;
 
--- ---- 1. Demo department (1 row; isolates these students for easy filtering)
+-- ---- 1. Demo department
 INSERT INTO dbo.departments(departmentname)
 VALUES ('Demo Presentation Cohort (Oct 2026)')
 ON CONFLICT (departmentname) DO NOTHING;
 
 -- ---- 2. 15 synthetic students: 9 approved, 3 pending, 2 suspended, 1 rejected
--- SchoolId starts with DEMO- (filterable/removable convention already used
--- elsewhere in this repo for products). Email uses the .invalid TLD, the
--- same "never resolves, never delivers mail" convention this project's own
--- Supabase Auth hook already reserves for non-real identities -- so no
--- notification can ever be sent to these addresses.
 INSERT INTO dbo.users(schoolid, fullname, email, departmentid, roleid, customertype, approvalstatus, rejectionreason, isactive)
 SELECT v.schoolid, v.fullname, v.email, d.departmentid, r.roleid, 'Student', v.approvalstatus, v.rejectionreason, v.approvalstatus <> 'suspended'
 FROM (VALUES
@@ -70,15 +61,14 @@ JOIN dbo.departments d ON d.departmentname = 'Demo Presentation Cohort (Oct 2026
 JOIN dbo.roles r ON r.rolename = 'Customer'
 WHERE NOT EXISTS (SELECT 1 FROM dbo.users u WHERE u.schoolid = v.schoolid);
 
--- ---- 3. Approval history row for every demo student (mirrors real flow)
+-- ---- 3. Approval history
 INSERT INTO dbo.approvalhistory(accountuserid, action, actingadminuserid, reason)
 SELECT u.userid, u.approvalstatus, NULL, CASE WHEN u.approvalstatus='rejected' THEN u.rejectionreason ELSE 'Demo presentation seed' END
 FROM dbo.users u
 WHERE u.schoolid LIKE 'DEMO-STU-%'
   AND NOT EXISTS (SELECT 1 FROM dbo.approvalhistory ah WHERE ah.accountuserid = u.userid);
 
--- ---- 4. Isolated demo catalog (category + 3 products + 1 variant each + stock)
--- Never touches the official SharePoint catalog/variants/inventory.
+-- ---- 4. Isolated demo catalog (never touches the real SharePoint catalog)
 INSERT INTO dbo.categories(categoryname) VALUES ('Demo Presentation Catalog')
 ON CONFLICT (categoryname) DO NOTHING;
 
@@ -102,27 +92,26 @@ WHERE p.sku IN ('DEMO-BX-SHIRT','DEMO-BX-CAP','DEMO-BX-TOTE')
 INSERT INTO dbo.inventory(productvariantid, physicalquantity, reservedquantity, reorderlevel)
 SELECT pv.productvariantid,
   CASE p.sku WHEN 'DEMO-BX-SHIRT' THEN 40 WHEN 'DEMO-BX-CAP' THEN 25 ELSE 20 END,
-  0,
-  5
+  0, 5
 FROM dbo.productvariants pv JOIN dbo.products p USING (productid)
 WHERE p.sku IN ('DEMO-BX-SHIRT','DEMO-BX-CAP','DEMO-BX-TOTE')
   AND NOT EXISTS (SELECT 1 FROM dbo.inventory i WHERE i.productvariantid = pv.productvariantid);
 
--- ---- 5. 15 demo reservations across the 9 approved demo students
--- 4 Pending/Confirmed (2+2), 2 Preparing, 4 Ready for Pickup, 3 Completed,
--- 2 Cancelled = 15 total (within the requested 12-18 range). Reference
--- prefix BX-DEMO- matches the existing local-fixture convention.
+-- ---- 5. 18 demo reservations: 2 Pending, 2 Confirmed, 2 Preparing,
+-- 4 Ready for Pickup, 6 Completed, 2 Cancelled (within the requested range;
+-- 6 Completed so there are 6 real completed sales to report in step 7).
 INSERT INTO dbo.reservations(reference, customerid, reservationstatusid, expiresat)
 SELECT 'BX-DEMO-' || v.n, u.userid, s.reservationstatusid, now() + interval '7 days'
 FROM (VALUES
-  ('0101','DEMO-STU-01','Pending'),      ('0102','DEMO-STU-02','Pending'),
-  ('0103','DEMO-STU-03','Confirmed'),    ('0104','DEMO-STU-04','Confirmed'),
-  ('0105','DEMO-STU-05','Preparing'),    ('0106','DEMO-STU-06','Preparing'),
+  ('0101','DEMO-STU-01','Pending'),          ('0102','DEMO-STU-02','Pending'),
+  ('0103','DEMO-STU-03','Confirmed'),        ('0104','DEMO-STU-04','Confirmed'),
+  ('0105','DEMO-STU-05','Preparing'),        ('0106','DEMO-STU-06','Preparing'),
   ('0107','DEMO-STU-07','Ready for Pickup'), ('0108','DEMO-STU-08','Ready for Pickup'),
   ('0109','DEMO-STU-09','Ready for Pickup'), ('0110','DEMO-STU-01','Ready for Pickup'),
-  ('0111','DEMO-STU-02','Completed'),    ('0112','DEMO-STU-03','Completed'),
-  ('0113','DEMO-STU-04','Completed'),    ('0114','DEMO-STU-05','Cancelled'),
-  ('0115','DEMO-STU-06','Cancelled')
+  ('0111','DEMO-STU-02','Completed'),        ('0112','DEMO-STU-03','Completed'),
+  ('0113','DEMO-STU-04','Completed'),        ('0116','DEMO-STU-07','Completed'),
+  ('0117','DEMO-STU-08','Completed'),        ('0118','DEMO-STU-09','Completed'),
+  ('0114','DEMO-STU-05','Cancelled'),        ('0115','DEMO-STU-06','Cancelled')
 ) v(n, schoolid, status)
 JOIN dbo.users u ON u.schoolid = v.schoolid
 JOIN dbo.reservationstatuses s ON s.statusname = v.status
@@ -136,10 +125,7 @@ JOIN dbo.productvariants pv ON pv.productid = p.productid
 WHERE r.reference LIKE 'BX-DEMO-%'
   AND NOT EXISTS (SELECT 1 FROM dbo.reservationitems ri WHERE ri.reservationid = r.reservationid);
 
--- Reserved-quantity bookkeeping + inventory movements, mirroring real
--- business rules: Pending/Confirmed/Preparing/Ready reservations hold
--- stock (Reserve movement); Completed releases the hold via a Sale
--- movement; Cancelled releases the hold via a Release movement.
+-- ---- 6. Reserve movement for every demo reservation (records the hold)
 INSERT INTO dbo.inventorymovements(productvariantid, inventorymovementtypeid, previousqty, changeqty, resultingqty, previousreservedquantity, resultingreservedquantity, relatedreference, notes)
 SELECT ri.productvariantid, mt.inventorymovementtypeid, i.physicalquantity, 0, i.physicalquantity,
   i.reservedquantity, i.reservedquantity + ri.quantity, r.reference, 'Demo presentation seed: reservation hold.'
@@ -150,33 +136,36 @@ JOIN dbo.inventorymovementtypes mt ON mt.movementtypename = 'Reserve'
 WHERE r.reference LIKE 'BX-DEMO-%'
   AND NOT EXISTS (SELECT 1 FROM dbo.inventorymovements im WHERE im.relatedreference = r.reference AND im.inventorymovementtypeid = mt.inventorymovementtypeid);
 
--- Only the first run moves reservedquantity: the Reserve-movement rows
--- inserted just above are the idempotency guard (each is itself unique on
--- relatedreference+type, so a second run inserts none of them, and this
--- UPDATE only sums quantity for reservations whose Reserve movement was
--- JUST inserted in this statement execution, not ones already recorded).
-UPDATE dbo.inventory i SET reservedquantity = reservedquantity + sub.qty, updatedat = now()
-FROM (
-  SELECT ri.productvariantid, SUM(ri.quantity) qty
-  FROM dbo.reservations r
-  JOIN dbo.reservationitems ri ON ri.reservationid = r.reservationid
-  JOIN dbo.inventorymovements im ON im.relatedreference = r.reference
-  JOIN dbo.inventorymovementtypes mt ON mt.inventorymovementtypeid = im.inventorymovementtypeid AND mt.movementtypename = 'Reserve'
-  WHERE r.reference LIKE 'BX-DEMO-%'
-    AND im.createdat >= statement_timestamp() - interval '1 minute'
-  GROUP BY ri.productvariantid
-) sub
-WHERE i.productvariantid = sub.productvariantid;
--- NOTE FOR THE HUMAN REVIEWER: the 1-minute recency window above is a
--- pragmatic guard for a single interactive run, not a bulletproof one. The
--- safest fix before this is actually executed is to replace it with an
--- explicit run-once marker (e.g. INSERT ... ON CONFLICT DO NOTHING into
--- dbo.systemsettings for a 'DemoPresentationSeedApplied' key, checked with
--- a WHERE NOT EXISTS guard on this whole UPDATE) so a slow run or a retry
--- can never double-count. Left as an open item rather than silently
--- shipped as "safe."
+-- ---- 7. Completed sales: real dbo.transactions + dbo.transactionitems for
+-- the 6 Completed reservations, plus the Sale movement that converts each
+-- hold into an actual stock decrement. staffid is resolved dynamically to
+-- an existing active Staff account (falls back to Admin if none), never a
+-- hardcoded id. totalamount is computed from the reservation's own items,
+-- never a separately invented figure, so dashboard/report totals always
+-- agree with the underlying rows.
+INSERT INTO dbo.transactions(reference, reservationid, customerid, staffid, paymentmethodid, transactionstatusid, totalamount, createdat)
+SELECT 'BX-DEMO-TXN-' || right(r.reference,4), r.reservationid, r.customerid,
+  (SELECT u.userid FROM dbo.users u JOIN dbo.roles rl ON rl.roleid=u.roleid WHERE u.isactive AND rl.rolename IN ('Staff','Admin') ORDER BY (rl.rolename='Staff') DESC, u.userid ASC LIMIT 1),
+  (SELECT paymentmethodid FROM dbo.paymentmethods WHERE paymentmethodname='Other'),
+  ts.transactionstatusid,
+  (SELECT COALESCE(SUM(ri.quantity * ri.unitprice),0) FROM dbo.reservationitems ri WHERE ri.reservationid = r.reservationid),
+  now() - (18 - right(r.reference,2)::int) * interval '12 hours'
+FROM dbo.reservations r
+JOIN dbo.reservationstatuses rs ON rs.reservationstatusid = r.reservationstatusid AND rs.statusname = 'Completed'
+JOIN dbo.transactionstatuses ts ON ts.statusname = 'Completed'
+WHERE r.reference LIKE 'BX-DEMO-%'
+  AND EXISTS (SELECT 1 FROM dbo.users u2 JOIN dbo.roles rl2 ON rl2.roleid=u2.roleid WHERE u2.isactive AND rl2.rolename IN ('Staff','Admin'))
+  AND NOT EXISTS (SELECT 1 FROM dbo.transactions t WHERE t.reservationid = r.reservationid);
 
--- ---- 6. Queue entries for the 4 Ready-for-Pickup reservations
+INSERT INTO dbo.transactionitems(transactionid, productvariantid, quantity, unitprice)
+SELECT t.transactionid, ri.productvariantid, ri.quantity, ri.unitprice
+FROM dbo.transactions t
+JOIN dbo.reservations r ON r.reservationid = t.reservationid
+JOIN dbo.reservationitems ri ON ri.reservationid = r.reservationid
+WHERE t.reference LIKE 'BX-DEMO-TXN-%'
+  AND NOT EXISTS (SELECT 1 FROM dbo.transactionitems ti WHERE ti.transactionid = t.transactionid);
+
+-- ---- 8. Queue entries for the 4 Ready-for-Pickup reservations
 INSERT INTO dbo.queueentries(queuenumber, customerid, reservationid, queuetypeid, queuestatusid, joinedat)
 SELECT 'DEMO-Q-' || row_number() OVER (ORDER BY r.reference), r.customerid, r.reservationid, qt.queuetypeid, qs.queuestatusid, now() - interval '1 hour'
 FROM dbo.reservations r
@@ -186,33 +175,64 @@ JOIN dbo.queuestatuses qs ON qs.statusname = 'Waiting'
 WHERE r.reference LIKE 'BX-DEMO-%'
   AND NOT EXISTS (SELECT 1 FROM dbo.queueentries qe WHERE qe.reservationid = r.reservationid);
 
--- ---- 7. Audit trail for the seed itself (so it is traceable, not silent)
+-- ---- 9. Completed-queue entries for the 6 Completed reservations (so
+-- pickup history/queue reports are consistent with the transaction set)
+INSERT INTO dbo.queueentries(queuenumber, customerid, reservationid, queuetypeid, queuestatusid, joinedat, calledat, completedat)
+SELECT 'DEMO-Q-' || (10 + row_number() OVER (ORDER BY r.reference)), r.customerid, r.reservationid, qt.queuetypeid, qs.queuestatusid,
+  now() - interval '1 day', now() - interval '23 hours', now() - interval '22 hours'
+FROM dbo.reservations r
+JOIN dbo.reservationstatuses rs ON rs.reservationstatusid = r.reservationstatusid AND rs.statusname = 'Completed'
+JOIN dbo.queuetypes qt ON qt.queuetypename = 'Regular'
+JOIN dbo.queuestatuses qs ON qs.statusname = 'Completed'
+WHERE r.reference LIKE 'BX-DEMO-%'
+  AND NOT EXISTS (SELECT 1 FROM dbo.queueentries qe WHERE qe.reservationid = r.reservationid);
+
+-- ---- 10. One-time inventory settlement: Sale movement + stock decrement
+-- for Completed reservations, Release movement + hold release (no physical
+-- change) for Cancelled ones. Gated on a systemsettings marker (inserted
+-- at the end of this script) so this NEVER runs twice.
+INSERT INTO dbo.inventorymovements(productvariantid, inventorymovementtypeid, previousqty, changeqty, resultingqty, previousreservedquantity, resultingreservedquantity, relatedreference, notes)
+SELECT ri.productvariantid, mt.inventorymovementtypeid, i.physicalquantity, -ri.quantity, i.physicalquantity - ri.quantity,
+  i.reservedquantity, i.reservedquantity - ri.quantity, r.reference, 'Demo presentation seed: completed sale.'
+FROM dbo.reservations r
+JOIN dbo.reservationstatuses rs ON rs.reservationstatusid = r.reservationstatusid AND rs.statusname = 'Completed'
+JOIN dbo.reservationitems ri ON ri.reservationid = r.reservationid
+JOIN dbo.inventory i ON i.productvariantid = ri.productvariantid
+JOIN dbo.inventorymovementtypes mt ON mt.movementtypename = 'Sale'
+WHERE r.reference LIKE 'BX-DEMO-%'
+  AND NOT EXISTS (SELECT 1 FROM dbo.systemsettings WHERE settingkey = 'DemoPresentationSeedApplied')
+  AND NOT EXISTS (SELECT 1 FROM dbo.inventorymovements im WHERE im.relatedreference = r.reference AND im.inventorymovementtypeid = mt.inventorymovementtypeid);
+
+INSERT INTO dbo.inventorymovements(productvariantid, inventorymovementtypeid, previousqty, changeqty, resultingqty, previousreservedquantity, resultingreservedquantity, relatedreference, notes)
+SELECT ri.productvariantid, mt.inventorymovementtypeid, i.physicalquantity, 0, i.physicalquantity,
+  i.reservedquantity, i.reservedquantity - ri.quantity, r.reference, 'Demo presentation seed: cancelled, hold released.'
+FROM dbo.reservations r
+JOIN dbo.reservationstatuses rs ON rs.reservationstatusid = r.reservationstatusid AND rs.statusname = 'Cancelled'
+JOIN dbo.reservationitems ri ON ri.reservationid = r.reservationid
+JOIN dbo.inventory i ON i.productvariantid = ri.productvariantid
+JOIN dbo.inventorymovementtypes mt ON mt.movementtypename = 'Release'
+WHERE r.reference LIKE 'BX-DEMO-%'
+  AND NOT EXISTS (SELECT 1 FROM dbo.systemsettings WHERE settingkey = 'DemoPresentationSeedApplied')
+  AND NOT EXISTS (SELECT 1 FROM dbo.inventorymovements im WHERE im.relatedreference = r.reference AND im.inventorymovementtypeid = mt.inventorymovementtypeid);
+
+UPDATE dbo.inventory i SET
+  physicalquantity = physicalquantity - COALESCE(sale.qty,0),
+  reservedquantity = reservedquantity - COALESCE(sale.qty,0) - COALESCE(cancel.qty,0),
+  updatedat = now()
+FROM (SELECT ri.productvariantid, SUM(ri.quantity) qty FROM dbo.reservations r JOIN dbo.reservationstatuses rs ON rs.reservationstatusid=r.reservationstatusid AND rs.statusname='Completed' JOIN dbo.reservationitems ri ON ri.reservationid=r.reservationid WHERE r.reference LIKE 'BX-DEMO-%' GROUP BY ri.productvariantid) sale
+FULL OUTER JOIN (SELECT ri.productvariantid, SUM(ri.quantity) qty FROM dbo.reservations r JOIN dbo.reservationstatuses rs ON rs.reservationstatusid=r.reservationstatusid AND rs.statusname='Cancelled' JOIN dbo.reservationitems ri ON ri.reservationid=r.reservationid WHERE r.reference LIKE 'BX-DEMO-%' GROUP BY ri.productvariantid) cancel
+  ON cancel.productvariantid = sale.productvariantid
+WHERE i.productvariantid = COALESCE(sale.productvariantid, cancel.productvariantid)
+  AND NOT EXISTS (SELECT 1 FROM dbo.systemsettings WHERE settingkey = 'DemoPresentationSeedApplied');
+
+-- ---- 11. Run-once marker: blocks step 10 forever after the first run.
+INSERT INTO dbo.systemsettings(settingkey, settingvalue, datatype, description)
+VALUES ('DemoPresentationSeedApplied', 'true', 'Boolean', 'Marks that the 2026-10 demo presentation seed''s one-time inventory settlement (Sale/Release movements, stock decrement) has run. Prevents double-application on re-run.')
+ON CONFLICT (settingkey) DO NOTHING;
+
+-- ---- 12. Audit trail for the seed itself
 INSERT INTO dbo.auditlogs(userid, action, entity, entityid, details)
-SELECT NULL, 'DemoPresentationSeed', 'System', 'demo-seed-2026-10', jsonb_build_object('students',15,'reservations',15,'queueEntries',4,'transactions',0,'note','Prepared for review; transactions deliberately excluded pending reporting-isolation fix.')
+SELECT NULL, 'DemoPresentationSeed', 'System', 'demo-seed-2026-10', jsonb_build_object('students',15,'reservations',18,'completedTransactions',6,'queueEntries',10,'note','Synthetic completed sales intentionally contribute to normal revenue/reporting totals per explicit instruction.')
 WHERE NOT EXISTS (SELECT 1 FROM dbo.auditlogs WHERE entityid = 'demo-seed-2026-10');
 
 COMMIT;
-
--- ============================================================================
--- COMPANION NOTE -- NOT PART OF THE SCRIPT ABOVE, FOR HUMAN REVIEW ONLY
--- ============================================================================
--- Before any demo transaction (Task 3's 6-10 "demonstration-only transaction
--- records") can be inserted without corrupting real financial reports:
---
---   migration (new file, not yet created):
---     ALTER TABLE dbo.transactions ADD COLUMN IF NOT EXISTS isdemo boolean NOT NULL DEFAULT false;
---
---   src/services/sql-reporting-service.ts line ~39:
---     FROM dbo.Transactions t${tw}  -->  FROM dbo.Transactions t${tw}${tw?" AND":" WHERE"} t.IsDemo=0
---   (and expose a separate demoRecordedSales figure if the dashboard should
---   show demo revenue at all, clearly labeled, per Task 5)
---
---   src/services/financial-reporting-service.ts line ~12 (sales query):
---     FROM dbo.Transactions t${clause(tx)}  -->  same IsDemo=0 filter
---
--- This is a deliberately minimal, additive, backward-compatible change
--- (existing rows default to isdemo=false, so nothing currently reported
--- shifts). It still touches live financial-reporting code, so it needs its
--- own explicit review/approval before implementation, separate from this
--- seed script.
--- ============================================================================
