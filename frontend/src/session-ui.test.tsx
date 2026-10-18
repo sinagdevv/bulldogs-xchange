@@ -7,7 +7,7 @@ import {SessionContext,type SessionState} from "./session-context";
 import type {Session,User} from "./types";
 
 const user:User={id:"1",email:"student@students.nu-fairview.edu.ph",displayName:"Student",role:"Customer"};
-const state=(session:Session|null,authOpen=false):SessionState=>({session,loading:false,error:null,authOpen,api:{} as SessionState["api"],login:vi.fn(),loginOtp:vi.fn(),requestOtp:vi.fn(),register:vi.fn(),requestPasswordReset:vi.fn(),openAuth:vi.fn(),closeAuth:vi.fn(),logout:vi.fn(),reload:vi.fn()});
+const state=(session:Session|null,authOpen=false):SessionState=>({session,loading:false,error:null,authOpen,api:{} as SessionState["api"],login:vi.fn(),startGoogleSignIn:vi.fn(),completeGoogleSignIn:vi.fn(),loginOtp:vi.fn(),requestOtp:vi.fn(),register:vi.fn(),requestPasswordReset:vi.fn(),openAuth:vi.fn(),closeAuth:vi.fn(),logout:vi.fn(),reload:vi.fn()});
 const render=(node:React.ReactNode,value:SessionState)=>renderToStaticMarkup(<SessionContext.Provider value={value}><MemoryRouter>{node}</MemoryRouter></SessionContext.Provider>);
 
 describe("authentication navigation",()=>{
@@ -18,5 +18,5 @@ describe("authentication navigation",()=>{
   it("blocks pending accounts from protected content",()=>{const pending={...user,approvalStatus:"pending" as const};const html=render(<RequireRole roles={["Customer"]}><span>Protected reservation</span></RequireRole>,state({authenticated:true,user:pending}));expect(html).toContain("Account Awaiting Approval");expect(html).not.toContain("Protected reservation")});
   it("blocks protected content after logout",()=>{const html=render(<RequireRole roles={["Customer"]}><span>Protected reservation</span></RequireRole>,state({authenticated:false,user:null}));expect(html).toContain("Sign in required");expect(html).not.toContain("Protected reservation")});
   it("removes every role workspace after logout",()=>{for(const role of ["Customer","Staff","Admin"] as const){const html=render(<AppLayout role={role}/>,state({authenticated:false,user:null}));expect(html).not.toContain("app-frame");expect(html).not.toContain(`${role} navigation`)}});
-  it("renders email login and an honest unavailable Google control",()=>{const html=render(<AuthPanel/>,state({authenticated:false,user:null},true));expect(html).toContain("Welcome back");expect(html).toContain('name="email"');expect(html).toContain("Continue with Google");expect(html).toContain("Google sign-in is not available");expect(html).toContain('type="password"');expect(html).not.toContain('name="identity"')});
+  it("renders email login and a configuration-gated Google control",()=>{const html=render(<AuthPanel/>,state({authenticated:false,user:null},true));expect(html).toContain("Welcome back");expect(html).toContain('name="email"');expect(html).toContain("Continue with Google");expect(html).toContain("Google sign-in requires the approved public Supabase configuration.");expect(html).toContain('type="password"');expect(html).not.toContain('name="identity"')});
 });
