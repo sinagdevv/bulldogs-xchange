@@ -12,3 +12,18 @@ CREATE TABLE IF NOT EXISTS dbo.catalogimportmappings (
 );
 
 COMMENT ON TABLE dbo.catalogimportmappings IS 'Stable external catalog source mappings; never use to infer stock.';
+
+REVOKE ALL ON TABLE dbo.catalogimportmappings FROM PUBLIC;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    REVOKE ALL ON TABLE dbo.catalogimportmappings FROM anon;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    REVOKE ALL ON TABLE dbo.catalogimportmappings FROM authenticated;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bulldogs_app_runtime') THEN
+    GRANT SELECT, INSERT ON TABLE dbo.catalogimportmappings TO bulldogs_app_runtime;
+  END IF;
+END $$;
