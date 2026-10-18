@@ -136,6 +136,33 @@ JOIN dbo.inventorymovementtypes mt ON mt.movementtypename = 'Reserve'
 WHERE r.reference LIKE 'BX-DEMO-%'
   AND NOT EXISTS (SELECT 1 FROM dbo.inventorymovements im WHERE im.relatedreference = r.reference AND im.inventorymovementtypeid = mt.inventorymovementtypeid);
 
+-- ---- 6b. Apply the Reserve holds logged in step 6 to dbo.inventory itself.
+-- Step 6 only wrote the movement LOG row (what the hold would be); it never
+-- incremented dbo.inventory.reservedquantity. Every later calculation that
+-- reads i.reservedquantity (step 10's Sale/Release settlement) therefore
+-- saw it stuck at its original seeded value of 0, so subtracting a demo
+-- reservation's quantity from it went negative (e.g. 0 - 1 = -1), which is
+-- exactly what tripped the CHECK(resultingreservedquantity>=0 AND
+-- resultingreservedquantity<=resultingqty) constraint on dbo.inventorymovements
+-- for BX-DEMO-0118. This step actually applies the hold, once, gated by its
+-- own one-time marker so a second run of this script never double-counts it.
+UPDATE dbo.inventory i SET
+  reservedquantity = reservedquantity + hold.qty,
+  updatedat = now()
+FROM (
+  SELECT ri.productvariantid, SUM(ri.quantity) qty
+  FROM dbo.reservations r
+  JOIN dbo.reservationitems ri ON ri.reservationid = r.reservationid
+  WHERE r.reference LIKE 'BX-DEMO-%'
+  GROUP BY ri.productvariantid
+) hold
+WHERE i.productvariantid = hold.productvariantid
+  AND NOT EXISTS (SELECT 1 FROM dbo.systemsettings WHERE settingkey = 'DemoPresentationReserveApplied');
+
+INSERT INTO dbo.systemsettings(settingkey, settingvalue, datatype, description)
+VALUES ('DemoPresentationReserveApplied', 'true', 'Boolean', 'Marks that the 2026-10 demo presentation seed''s one-time Reserve-hold increment (dbo.inventory.reservedquantity, step 6b) has run. Prevents double-application on re-run.')
+ON CONFLICT (settingkey) DO NOTHING;
+
 -- ---- 7. Completed sales: real dbo.transactions + dbo.transactionitems for
 -- the 6 Completed reservations, plus the Sale movement that converts each
 -- hold into an actual stock decrement. staffid is resolved dynamically to
