@@ -1,0 +1,54 @@
+import {renderToStaticMarkup} from "react-dom/server";
+import {MemoryRouter} from "react-router-dom";
+import {describe,expect,it,vi} from "vitest";
+import {BarkyMascot,BarkyWidget,type BarkyMascotState} from "./barky";
+import {SessionContext,type SessionState} from "./session-context";
+
+// BarkyWidget only needs api.request to exist -- it is never called while the widget is closed (idle).
+const state:SessionState={session:null,loading:false,error:null,authOpen:false,api:{request:vi.fn()} as unknown as SessionState["api"],login:vi.fn(),loginOtp:vi.fn(),requestOtp:vi.fn(),register:vi.fn(),requestPasswordReset:vi.fn(),openAuth:vi.fn(),closeAuth:vi.fn(),logout:vi.fn(),reload:vi.fn()};
+const render=(path:string)=>renderToStaticMarkup(<SessionContext.Provider value={state}><MemoryRouter initialEntries={[path]}><BarkyWidget/></MemoryRouter></SessionContext.Provider>);
+
+describe("Barky landing-page opt-out",()=>{
+  it("never renders on the public landing page",()=>{
+    expect(render("/")).toBe("");
+  });
+
+  it("still renders its launcher on other public and authenticated routes",()=>{
+    for(const path of ["/catalog","/how-it-works","/home","/staff","/admin"]){
+      expect(render(path)).toContain("barky-launcher");
+    }
+  });
+});
+
+describe("Barky mascot states",()=>{
+  const mascot=(state:BarkyMascotState)=>renderToStaticMarkup(<BarkyMascot state={state}/>);
+
+  it("gives each state its own root class so idle/happy/thinking/responding/error drive distinct CSS animations",()=>{
+    for(const state of ["idle","happy","thinking","responding","error"] as const){
+      expect(mascot(state)).toContain(`barky-mascot-${state}`);
+    }
+  });
+
+  it("renders a raised paw only for the happy greeting state",()=>{
+    expect(mascot("happy")).toContain("barky-paw");
+    for(const state of ["idle","thinking","responding","error"] as const)expect(mascot(state)).not.toContain("barky-paw");
+  });
+
+  it("renders bobbing thought bubbles only for the thinking state",()=>{
+    expect(mascot("thinking")).toContain("barky-think-1");
+    for(const state of ["idle","happy","responding","error"] as const)expect(mascot(state)).not.toContain("barky-think-1");
+  });
+
+  it("renders a sweat drop only for the error state, and a toothy grin only for the others",()=>{
+    expect(mascot("error")).toContain("barky-sweat");
+    for(const state of ["idle","happy","thinking","responding"] as const){
+      const html=mascot(state);
+      expect(html).not.toContain("barky-sweat");
+      expect(html).toContain("barky-mouth"); // open grin group, not the error "oh" path
+    }
+  });
+
+  it("defaults to the idle state when none is given",()=>{
+    expect(renderToStaticMarkup(<BarkyMascot/>)).toContain("barky-mascot-idle");
+  });
+});

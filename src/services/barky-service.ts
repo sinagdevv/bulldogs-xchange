@@ -322,11 +322,18 @@ export class BarkyService {
 
   async getSession(sessionId: string): Promise<{ userId: number | null; ipHash: string } | null> {
     if (!/^[0-9a-f-]{36}$/.test(sessionId)) return null; // reject obviously malformed UUIDs
-    const rows = await this.sql.query<{ user_id: number | null; ip_hash: string }>(`
+    // user_id is a Postgres bigint; node-postgres returns bigint columns as strings (not numbers) to
+    // avoid precision loss, so the raw row value is "7", not 7. canAccessBarkySession() compares this
+    // against a real number (Number(actor.id) in app.ts) with strict equality -- "7" === 7 is always
+    // false, so every authenticated session check failed with "This session belongs to another user."
+    // regardless of who was asking. Coerce to a number here so the runtime value matches the declared
+    // type and the ownership check actually compares like with like.
+    const rows = await this.sql.query<{ user_id: number | string | null; ip_hash: string }>(`
       SELECT user_id, ip_hash FROM dbo.bx_barky_sessions WHERE id = @sessionId LIMIT 1
     `, { sessionId });
     if (!rows.length) return null;
-    return { userId: rows[0]!.user_id, ipHash: rows[0]!.ip_hash };
+    const raw = rows[0]!.user_id;
+    return { userId: raw == null ? null : Number(raw), ipHash: rows[0]!.ip_hash };
   }
 
   // ---- Chat ----------------------------------------------------------------
