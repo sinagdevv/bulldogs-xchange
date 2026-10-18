@@ -1,7 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {NavLink} from "react-router-dom";
 import {Icon} from "./icons";
-import {catalogImageForSku} from "./product-images";
 import {usePointerParallax,useScrollParallax} from "./motion";
 import "./showroom.css";
 
@@ -11,12 +10,17 @@ import "./showroom.css";
  * opaque: true    -> the source photo has a light studio background, blended into the lit interior. */
 export type Piece={id:string;name:string;line:string;src:string;approved:boolean;sku?:string;opaque?:boolean;note:string};
 const P="/images/products/";
-/* Approved pieces take their image from the live SKU map, so the showroom cannot drift from the catalog. */
-const live=(sku:"BX-SHIRT"|"BX-CAP"|"BX-TOTE")=>({sku,src:catalogImageForSku(sku)!,approved:true});
+/* Keep the approved production art that composes the original showroom illustration. */
+const showroomArt={
+  "MRC-SHIRT":`${P}approved/MER-TSH-001-FRONT.webp`,
+  "MRC-CAP":`${P}approved/MER-CAP-001-FRONT.webp`,
+  "MRC-TOTE":`${P}approved/MER-TOTE-001-FRONT.webp`,
+} as const;
+const live=(sku:keyof typeof showroomArt)=>({sku,src:showroomArt[sku],approved:true});
 const rack:Piece[]=[
   {id:"jacket",name:"Varsity Jacket",line:"Bulldogs outerwear",src:`${P}showcase/MER-JCKT-001-FRONT.webp`,approved:false,note:"Navy body with gold sleeves and the NU crest."},
   {id:"crew",name:"NATIONAL Crewneck",line:"PE and athletics",src:`${P}showcase/PE-SWT-001-FRONT.webp`,approved:false,note:"Heather crewneck with collegiate lettering."},
-  {id:"shirt",name:"Bulldogs Shirt",line:"Official campus tee",...live("BX-SHIRT"),note:"The everyday Bulldogs tee. Choose your size and reserve it in the shop."},
+  {id:"shirt",name:"NU Bulldogs Shirt",line:"Official campus tee",...live("MRC-SHIRT"),note:"The everyday Bulldogs tee. Choose your size and reserve it in the shop."},
   {id:"uniform",name:"College Uniform Top",line:"Traditional college uniform",src:`${P}showcase/TRAD-TOP-001-FRONT-CUTOUT.webp`,approved:false,note:"Traditional college uniform reference."},
   {id:"pe",name:"PE Shirt",line:"PE and athletics",src:`${P}showcase/PE-TSH-001-FRONT.webp`,approved:false,note:"White PE shirt with the NU crest."},
   {id:"blazer",name:"Tourism Blazer",line:"Tourism Management",src:`${P}showcase/TM-BLAZ-001-FRONT.webp`,approved:false,note:"Tailored blazer for the Tourism Management program."},
@@ -24,7 +28,7 @@ const rack:Piece[]=[
 ];
 const shelves:{label:string;items:Piece[]}[]=[
   {label:"Headwear",items:[
-    {id:"cap",name:"Bulldogs Cap",line:"Official cap",...live("BX-CAP"),note:"The classic Bulldogs cap, made for game days and every day."},
+    {id:"cap",name:"NU Bulldogs Cap",line:"Official cap",...live("MRC-CAP"),note:"The classic Bulldogs cap, made for game days and every day."},
     {id:"cap-w",name:"White Bulldog Cap",line:"Headwear",src:`${P}showcase/MER-CAP-002-FRONT-CUTOUT.webp`,approved:false,note:"Embroidered bulldog cap in white."},
     {id:"cap-b",name:"Black Bulldog Cap",line:"Headwear",src:`${P}showcase/MER-CAP-003-FRONT-CUTOUT.webp`,approved:false,note:"Embroidered bulldog cap in black."},
   ]},
@@ -34,7 +38,7 @@ const shelves:{label:string;items:Piece[]}[]=[
     {id:"fan-h",name:"Handheld Fan",line:"Accessories",src:`${P}showcase/MER-FAN-001-FRONT.webp`,approved:false,note:"Handheld fan in NU colors."},
   ]},
   {label:"Carry",items:[
-    {id:"tote",name:"Bulldogs Tote Bag",line:"Official tote",...live("BX-TOTE"),note:"A roomy everyday tote carrying the Bulldogs mark."},
+    {id:"tote",name:"NU Bulldogs Tote",line:"Official tote",...live("MRC-TOTE"),note:"A roomy everyday tote carrying the Bulldogs mark."},
     {id:"tote-nu",name:"NU Monogram Tote",line:"Bags",src:`${P}showcase/MER-TOTE-002-FRONT-CUTOUT.webp`,approved:false,note:"Canvas tote with the NU monogram."},
   ]},
 ];
@@ -115,9 +119,9 @@ export function ShowroomHero(){
               <span className="sr-sign" aria-hidden="true"><span>BULLDOGS</span><b>XCHANGE</b></span>
               <span className="sr-interior" aria-hidden="true"/>
               <span className="sr-rod" aria-hidden="true"/>
-              <span className="sr-hang"><Hanger/><img src={catalogImageForSku("BX-SHIRT")} alt="Bulldogs Shirt" width="600" height="600" fetchPriority="high"/></span>
-              <span className="sr-plinth p1"><img src={catalogImageForSku("BX-CAP")} alt="Bulldogs Cap" width="600" height="600" decoding="async"/></span>
-              <span className="sr-plinth p2"><img src={catalogImageForSku("BX-TOTE")} alt="Bulldogs Tote Bag" width="600" height="600" decoding="async"/></span>
+              <span className="sr-hang"><Hanger/><img src={showroomArt["MRC-SHIRT"]} alt="NU Bulldogs Shirt" width="600" height="600" fetchPriority="high"/></span>
+              <span className="sr-plinth p1"><img src={showroomArt["MRC-CAP"]} alt="NU Bulldogs Cap" width="600" height="600" decoding="async"/></span>
+              <span className="sr-plinth p2"><img src={showroomArt["MRC-TOTE"]} alt="NU Bulldogs Tote" width="600" height="600" decoding="async"/></span>
             </div>
             <span className="sr-deck" aria-hidden="true"/>
           </div>

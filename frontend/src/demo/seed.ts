@@ -77,7 +77,7 @@ export function createSeedState():DemoState{
   const products:DemoProduct[]=[],variants:DemoVariant[]=[];
   PRODUCTS.forEach(([title,category,price,sizes,,code,description],i)=>{
     const id=`prd-${String(i+1).padStart(2,"0")}`;
-    const sku=`BX-${code}`,imageUrl=catalogImageForSku(sku);
+    const sku=`BX-${code}`,officialSku=code==="SHIRT"?"MRC-SHIRT":code==="CAP"?"MRC-CAP":code==="TOTE"?"MRC-TOTE":undefined,imageUrl=officialSku?catalogImageForSku(officialSku):undefined;
     products.push({id,title,category,sku,description,price,featured:Boolean(imageUrl),active:true,...(imageUrl?{imageUrl}:{})});
     sizes.forEach(sz=>variants.push({id:`${id}-${sz}`,productId:id,name:sz,sku:`BX-${code}-${sz==="Standard"?"STD":sz}`,physical:0,reorder:sizes.length>1?4:3}));
   });
@@ -90,7 +90,7 @@ export function createSeedState():DemoState{
   const staffNames=STAFF.filter(s=>s.role==="Staff").map(s=>s.name);
   interface Spec{student:DemoStudent;lines:[string,number][];status:ResStatus;endAgo:number;pathKey?:string}
   const specs:Spec[]=[];
-  const lineOf=(title:string,size:string,qty:number):[string,number]=>[`${byTitle(title).id}-${size}`,qty];
+  const lineOf=(title:string,size:string,qty:number):[string,number]=>[variants.find(v=>v.productId===byTitle(title).id&&v.name===size)!.id,qty];
   specs.push({student:persona,status:"Ready for Pickup",endAgo:2*HOUR,lines:[lineOf("Bulldogs Merchandise Shirt","M",1),lineOf("Bulldogs Merchandise Tote","Standard",1)]});
   specs.push({student:persona,status:"Preparing",endAgo:50*MIN,lines:[lineOf("Bulldogs Pullover Hoodie","L",1)]});
   specs.push({student:persona,status:"Completed",endAgo:9*DAY,lines:[lineOf("NU Fairview Classic Polo","M",2)]});
