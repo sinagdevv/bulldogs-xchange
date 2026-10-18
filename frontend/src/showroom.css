@@ -86,6 +86,12 @@
 .sr-tag b{font-weight:700}
 .sr-seal{flex:none;display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--gold-500);color:var(--navy-950)}
 .sr-seal svg{width:11px;height:11px;stroke-width:3}
+/* Selection checkmark -- marks which garment/accessory is the current UI selection only.
+   Distinct from .sr-seal (which marks the 3 reservable SKUs): this appears on whatever is
+   selected regardless of reservability, and never implies stock or reservation status. */
+.sr-select-badge{position:absolute;top:4%;right:6%;z-index:4;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--gold-500);color:var(--navy-950);box-shadow:0 2px 8px rgba(10,30,70,.35);opacity:0;transform:scale(.6);transition:opacity .22s var(--ease),transform .22s var(--ease);pointer-events:none}
+.sr-select-badge svg{width:15px;height:15px;stroke-width:3.2}
+.sr-garment.on .sr-select-badge,.sr-item.on .sr-select-badge{opacity:1;transform:scale(1)}
 .sr-garment::before{content:"";position:absolute;z-index:0;inset:14% 0 16%;border-radius:50%;background:radial-gradient(closest-side,rgba(255,215,120,.5),transparent);opacity:0;transition:opacity .4s var(--ease);pointer-events:none}
 .sr-garment:hover::before,.sr-garment:focus-visible::before,.sr-garment.on::before{opacity:1}
 .sr-garment:hover .sr-cloth img,.sr-garment:focus-visible .sr-cloth img,.sr-garment.on .sr-cloth img{transform:scale(1.04);filter:drop-shadow(0 26px 20px rgba(10,30,70,.28))}
@@ -229,5 +235,5 @@
 @media (prefers-reduced-motion:reduce){
   .sr-tilt,.sr-bldg,.sr-stage,.sr-hang,.sr-plinth{transition:none;transform:none;translate:none}
   .sr-hang,.sr-beam,.sr-garment:hover,.sr-garment.on{animation:none}
-  .sr-cloth img,.sr-obj img,.sr-obj::after,.sr-garment::before,.sr-item::before{transition:none}
+  .sr-cloth img,.sr-obj img,.sr-obj::after,.sr-garment::before,.sr-item::before,.sr-select-badge{transition:none}
 }

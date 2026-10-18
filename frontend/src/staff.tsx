@@ -8,6 +8,7 @@ import {useToast} from "./toast";
 import {Icon,type IconName} from "./icons";
 import type {AuditLog,Category,FinancialOverview,FinancialRecord,InventoryHealth,InventoryMovement,OperationsSummary,Product,QueueRecord,QueueSummary,ReportMetrics,Reservation,SystemSetting,Transaction,User,Variant} from "./types";
 import {errorMessage,finalStatuses,formatDateTime,formatPeso,isAbort} from "./format";
+import {mapLimit} from "./concurrency";
 
 /* ---------------- shared helpers ---------------- */
 function useLoad<T>(load:(signal:AbortSignal)=>Promise<T>,deps:unknown[]=[]){const[data,setData]=useState<T|null>(null),[error,setError]=useState(""),[tick,setTick]=useState(0);useEffect(()=>{const c=new AbortController();setError("");load(c.signal).then(setData).catch(e=>{if(!isAbort(e))setError(errorMessage(e))});return()=>c.abort()},[tick,...deps]);return{data,error,reload:()=>setTick(t=>t+1)}}
@@ -15,7 +16,7 @@ const Section=({title,description,action,children,flush=true}:{title:string;desc
 function Body<T>({state,empty,children}:{state:{data:T[]|null;error:string;reload():void};empty:ReactNode;children:(rows:T[])=>ReactNode}){if(state.error)return <ErrorState message={state.error} onRetry={state.reload}/>;if(!state.data)return <RowsSkeleton/>;if(!state.data.length)return <>{empty}</>;return <>{children(state.data)}</>}
 
 /** Maps variant ids to "Product · Variant" using the public catalog endpoints available to both Staff and Admin. */
-function useVariantLabels(){const{api}=useSession(),[labels,setLabels]=useState<Record<string,{product:Product;variant:Variant}>>({});useEffect(()=>{const c=new AbortController();api.products(c.signal).then(products=>Promise.all(products.map(p=>api.variants(p.id,c.signal).then(vs=>vs.map(v=>[v.id,{product:p,variant:v}] as const)).catch(()=>[])))).then(groups=>setLabels(Object.fromEntries(groups.flat()))).catch(()=>{/* ids are shown when labels are unavailable */});return()=>c.abort()},[api]);return labels}
+function useVariantLabels(){const{api}=useSession(),[labels,setLabels]=useState<Record<string,{product:Product;variant:Variant}>>({});useEffect(()=>{const c=new AbortController();api.products(c.signal).then(products=>mapLimit(products,4,p=>api.variants(p.id,c.signal).then(vs=>vs.map(v=>[v.id,{product:p,variant:v}] as const)).catch(()=>[]))).then(groups=>setLabels(Object.fromEntries(groups.flat()))).catch(()=>{/* ids are shown when labels are unavailable */});return()=>c.abort()},[api]);return labels}
 const variantName=(labels:ReturnType<typeof useVariantLabels>,id:string)=>{const l=labels[id];return l?<><strong>{l.product.title}</strong><span className="sub">{l.variant.name} · {l.variant.variantSku}</span></>:<><strong>Variant #{id}</strong><span className="sub">Catalog label unavailable</span></>};
 
 const steps={Pending:{step:"confirm",label:"Confirm"},Confirmed:{step:"preparing",label:"Start preparing"},Preparing:{step:"ready",label:"Mark ready"}} as const;
