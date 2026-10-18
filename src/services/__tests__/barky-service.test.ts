@@ -81,6 +81,22 @@ describe("session isolation", () => {
     const result = await service.getSession(VALID_UUID);
     expect(result).toEqual({ userId: null, ipHash: "203.0.113.2" });
   });
+
+  // Regression: node-postgres returns a bigint column (user_id) as a STRING ("42"), never a number,
+  // unless a custom type parser is registered (this codebase registers none). A prior version of
+  // getSession() passed that string straight through as if it were already a number, so the FORBIDDEN
+  // ownership check in app.ts (`session.userId === Number(actor.id)`) was comparing "42" === 42 --
+  // always false -- which made every authenticated Barky session look like it belonged to someone else.
+  it("getSession coerces a bigint user_id returned as a string by node-postgres to a number", async () => {
+    const { service, db } = makeService();
+    db.query.mockResolvedValueOnce([{ user_id: "42", ip_hash: "203.0.113.1" }]);
+
+    const result = await service.getSession(VALID_UUID);
+    expect(result).toEqual({ userId: 42, ipHash: "203.0.113.1" });
+    expect(typeof result!.userId).toBe("number");
+    // ...and the coerced value now actually satisfies the real ownership check used in app.ts.
+    expect(canAccessBarkySession(result!, 42, "203.0.113.9")).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
