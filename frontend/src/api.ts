@@ -5,7 +5,14 @@ import {presentCatalogProduct} from "./product-images";
 import {isStaticPreview,previewUnavailable} from "./deployment-mode";
 import {filterSupplemental,isSupplementalId,supplementalCategories,supplementalProducts} from "./supplemental-catalog";
 /** SKUs that exist in the official DB but must not appear in customer-facing browsing/search/suggestions (e.g. no verified stock/photo). Admin inventory and order history are unaffected -- this only filters the public products() response. */
-const CUSTOMER_HIDDEN_SKUS = new Set(["MRC-SWEAT"]);
+const CUSTOMER_HIDDEN_SKUS = new Set([
+  "MRC-SWEAT",
+  "SHS-PANTS-F",
+  "SHS-PANTS-M",
+  "COL-PANTS-F",
+  "COL-PANTS-M",
+  "COL-PANTS-W",
+]);
 
 /**
  * Resolves the real SHS/College official category ids (as assigned in the

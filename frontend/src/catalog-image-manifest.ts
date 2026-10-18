@@ -14,7 +14,7 @@ export const catalogImageManifest:Record<string,CatalogImage>={
   "COL-PANTS-W":{status:"missing",source:"No exact College women's-pants photograph supplied"},
   "PE-SHIRT":{asset:"/merch/others-pe-shirt.webp",status:"verified-local",source:"assets/OTHERS/PE_SHIRT.png"},
   "PE-JOG":{asset:"/merch/others-pe-pants.webp",status:"verified-local",source:"assets/OTHERS/PE_PANTS.png"},
-  "NSTP-SHIRT":{asset:"/merch/others-nstp-shirt.webp",status:"verified-local",source:"assets/OTHERS/NSTP_SHIRT.png"},
+  "NSTP-SHIRT":{asset:"/merch/others-nstp-shirt-cutout.png",status:"verified-local",source:"assets/OTHERS/NSTP_SHIRT.png"},
   "MRC-SHIRT":{asset:"/merch/others-mer-shirt.webp",status:"verified-local",source:"assets/OTHERS/MER_SHIRT.png"},
   "MRC-TOTE":{asset:"/merch/others-mer-tote.webp",status:"verified-local",source:"assets/OTHERS/MER_TOTE.png"},
   "MRC-CAP":{asset:"/merch/others-mer-cap.webp",status:"verified-local",source:"assets/OTHERS/MER_CAP.png"},
