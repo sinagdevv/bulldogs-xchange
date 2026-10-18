@@ -203,6 +203,10 @@ export const supplementalProducts: Product[] = [
  */
 export const CROSS_LISTED_SKUS = new Set<string>(["TRAD-SKRT-001"]);
 
+/** True when a cross-listed supplemental product belongs in an official SHS/College view. */
+export const isCrossListedInCategory=(product:Product,categoryId:string,products:readonly Product[])=>
+  CROSS_LISTED_SKUS.has(product.sku)&&products.some(item=>item.categoryId===categoryId&&/^(SHS|COL)-/.test(item.sku));
+
 /** Returns true when id belongs to a supplemental (non-DB) product. */
 export const isSupplementalId = (id: string) => id.startsWith("supp-");
 

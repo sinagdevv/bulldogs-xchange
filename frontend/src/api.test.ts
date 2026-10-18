@@ -25,6 +25,23 @@ describe("API errors",()=>{
     const allView=await client.products();
     expect(allView.filter(p=>p.sku==="TRAD-SKRT-001")).toHaveLength(1);
   });
+  it("hides only traditional pants from public catalog and search while keeping legitimate trousers",async()=>{
+    const products=[
+      ...["SHS-PANTS-F","SHS-PANTS-M","COL-PANTS-F","COL-PANTS-M","COL-PANTS-W"].map((sku,index)=>({id:String(index),title:"Traditional Pants",categoryId:index<2?"cat-shs":"cat-college",sku,description:"Traditional pants",price:550,isFeatured:false,isActive:true})),
+      {id:"pe",title:"PE Jogging Pants",categoryId:"cat-pe",sku:"PE-JOG",description:"Official PE jogging pants",price:400,isFeatured:false,isActive:true},
+    ];
+    vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({success:true,data:products}),{status:200})));
+    const client=new ApiClient(auth,"/api");
+    expect((await client.products()).map(p=>p.sku)).not.toEqual(expect.arrayContaining(["SHS-PANTS-F","SHS-PANTS-M","COL-PANTS-F","COL-PANTS-M","COL-PANTS-W"]));
+    expect(await client.products()).toEqual(expect.arrayContaining([expect.objectContaining({sku:"PE-JOG"})]));
+    expect((await client.products({search:"pants"})).map(p=>p.sku)).toEqual(["PE-JOG"]);
+  });
+  it("finds the canonical skirt through public search",async()=>{
+    vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({success:true,data:[]}),{status:200})));
+    const results=await new ApiClient(auth,"/api").products({search:"skirt"});
+    expect(results.filter(p=>p.sku==="TRAD-SKRT-001")).toHaveLength(1);
+    expect(results.find(p=>p.sku==="TRAD-SKRT-001")).toMatchObject({supplemental:true,price:-1});
+  });
   it("keeps source category labels",async()=>{vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({success:true,data:[{id:"1",title:"SHS",isActive:true}]}),{status:200})));await expect(new ApiClient(auth,"/api").categories()).resolves.toEqual(expect.arrayContaining([expect.objectContaining({title:"SHS"})]));});
   it("posts customer onboarding with bearer authentication",async()=>{const fetcher=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{void input;void init;return new Response(JSON.stringify({success:true,data:{id:"7",role:"Customer"}}),{status:201})});vi.stubGlobal("fetch",fetcher);await new ApiClient(auth,"/api").onboard({schoolId:"2026-7",fullName:"New User",customerType:"Student"});expect(fetcher).toHaveBeenCalledWith("/api/onboarding/customer",expect.objectContaining({method:"POST",headers:expect.any(Headers)}));expect((fetcher.mock.calls[0]![1]!.headers as Headers).get("Authorization")).toBe("Bearer token");});
   it("loads Admin users and changes roles through existing endpoints",async()=>{const fetcher=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{void init;return new Response(JSON.stringify({success:true,data:String(input).endsWith("/role")?{id:"7",role:"Staff"}:[]}),{status:200})});vi.stubGlobal("fetch",fetcher);await new ApiClient(auth,"/api").users();await new ApiClient(auth,"/api").changeUserRole("7","Staff");expect(fetcher.mock.calls.map(call=>String(call[0]))).toEqual(["/api/admin/users","/api/admin/users/7/role"]);expect(fetcher.mock.calls[1]![1]).toMatchObject({method:"PUT",body:'{"role":"Staff"}'});});
