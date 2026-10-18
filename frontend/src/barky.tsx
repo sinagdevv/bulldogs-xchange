@@ -4,6 +4,7 @@
  * Auth handled transparently by ApiClient (same as the rest of the app).
  */
 import {useCallback,useEffect,useRef,useState} from "react";
+import {useLocation} from "react-router-dom";
 import {useSession} from "./session";
 
 // ---- Types -----------------------------------------------------------------
@@ -17,43 +18,49 @@ const SUGGESTED=[
   "How does the pickup queue work?",
 ];
 
-// ---- Barky mascot SVG — yellow NU bulldog ----------------------------------
+// ---- Barky mascot SVG — gold NU bulldog, vintage-cartoon rubber-hose outline ----
 function BarkyMascot({size=48,animate=false,wave=false,think=false}:{size?:number;animate?:boolean;wave?:boolean;think?:boolean}){
   return(
     <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true" className={`barky-mascot${animate?" barky-breathe":""}${wave?" barky-wave":""}`}>
-      {/* Body — deep navy */}
-      <ellipse cx="40" cy="59" rx="19" ry="14" fill="#0f2347"/>
-      {/* Collar band — gold */}
-      <rect x="25" y="52" width="30" height="8" rx="4" fill="#FFD700"/>
-      {/* Collar stud */}
-      <circle cx="40" cy="56" r="2.8" fill="#c8980a"/>
-      {/* Head — bright gold with dark outline */}
-      <ellipse cx="40" cy="35" rx="23" ry="22" fill="#FFD700" stroke="#b07800" strokeWidth="1.4"/>
-      {/* Ears — darker gold */}
-      <ellipse cx="18.5" cy="25" rx="6.5" ry="9.5" fill="#e6a800" stroke="#b07800" strokeWidth="1.2" transform="rotate(-18 18.5 25)"/>
-      <ellipse cx="61.5" cy="25" rx="6.5" ry="9.5" fill="#e6a800" stroke="#b07800" strokeWidth="1.2" transform="rotate(18 61.5 25)"/>
+      {/* Body — deep navy, bold black outline (rubber-hose silhouette) */}
+      <ellipse cx="40" cy="59" rx="19" ry="14" fill="#0f2347" stroke="#0a0a0a" strokeWidth="2"/>
+      {/* Collar band — gold, with spiked studs for school-mascot energy */}
+      <rect x="25" y="52" width="30" height="8" rx="4" fill="#FFD700" stroke="#0a0a0a" strokeWidth="1.6"/>
+      <circle cx="31" cy="56" r="1.6" fill="#0a0a0a"/>
+      <circle cx="40" cy="56" r="1.6" fill="#0a0a0a"/>
+      <circle cx="49" cy="56" r="1.6" fill="#0a0a0a"/>
+      {/* Collar tag */}
+      <circle cx="40" cy="62.5" r="3" fill="#fffbe6" stroke="#0a0a0a" strokeWidth="1.4"/>
+      {/* Head — bright gold with bold black outline */}
+      <ellipse cx="40" cy="35" rx="23" ry="22" fill="#FFD700" stroke="#0a0a0a" strokeWidth="2.2"/>
+      {/* Ears — darker gold, bold outline */}
+      <ellipse cx="18.5" cy="25" rx="6.5" ry="9.5" fill="#e6a800" stroke="#0a0a0a" strokeWidth="1.8" transform="rotate(-18 18.5 25)"/>
+      <ellipse cx="61.5" cy="25" rx="6.5" ry="9.5" fill="#e6a800" stroke="#0a0a0a" strokeWidth="1.8" transform="rotate(18 61.5 25)"/>
       <ellipse cx="18.5" cy="25" rx="3.2" ry="5.8" fill="#c07000" transform="rotate(-18 18.5 25)"/>
       <ellipse cx="61.5" cy="25" rx="3.2" ry="5.8" fill="#c07000" transform="rotate(18 61.5 25)"/>
-      {/* Eyes — large, expressive */}
-      <ellipse cx="29.5" cy="32" rx="7.5" ry="8" fill="#111"/>
-      <ellipse cx="50.5" cy="32" rx="7.5" ry="8" fill="#111"/>
+      {/* Brow — a light furrow for "friendly-aggressive" bulldog energy, not angry */}
+      <path d="M21 24.5 Q27.5 20 34 23.5" stroke="#0a0a0a" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      <path d="M46 23.5 Q52.5 20 59 24.5" stroke="#0a0a0a" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      {/* Eyes — large, expressive, bold-outlined */}
+      <ellipse cx="29.5" cy="32" rx="7.5" ry="8" fill="#111" stroke="#0a0a0a" strokeWidth="1.2"/>
+      <ellipse cx="50.5" cy="32" rx="7.5" ry="8" fill="#111" stroke="#0a0a0a" strokeWidth="1.2"/>
       {/* Iris highlights */}
       <ellipse cx="32" cy="29.5" rx="3" ry="3" fill="white"/>
       <ellipse cx="53" cy="29.5" rx="3" ry="3" fill="white"/>
       <circle cx="31" cy="31" r="1.1" fill="white" opacity="0.55"/>
       <circle cx="52" cy="31" r="1.1" fill="white" opacity="0.55"/>
-      {/* Muzzle — cream, distinct from gold */}
-      <ellipse cx="40" cy="43.5" rx="10.5" ry="8.5" fill="#fffbe6" stroke="#c8a010" strokeWidth="0.9"/>
+      {/* Muzzle — cream, distinct from gold, bold outline */}
+      <ellipse cx="40" cy="43.5" rx="10.5" ry="8.5" fill="#fffbe6" stroke="#0a0a0a" strokeWidth="1.6"/>
       {/* Nose */}
-      <ellipse cx="40" cy="39.5" rx="5.5" ry="3.8" fill="#1a1010"/>
+      <ellipse cx="40" cy="39.5" rx="5.5" ry="3.8" fill="#1a1010" stroke="#0a0a0a" strokeWidth="0.8"/>
       <ellipse cx="38.5" cy="38.5" rx="1.6" ry="1" fill="#444" opacity="0.45"/>
-      {/* Smile */}
-      <path d="M33.5 46 Q40 50.5 46.5 46" stroke="#7a5000" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
-      <path d="M40 48 L40 50.5" stroke="#7a5000" strokeWidth="1.8" strokeLinecap="round"/>
+      {/* Grin — open, with a hint of teeth, snappy cartoon energy */}
+      <path d="M32 45.5 Q40 52.5 48 45.5 Q40 49.5 32 45.5 Z" fill="#fff" stroke="#0a0a0a" strokeWidth="1.6" strokeLinejoin="round"/>
+      <path d="M40 48.2 L40 50.5" stroke="#0a0a0a" strokeWidth="1.6" strokeLinecap="round"/>
       {/* Blush — warm amber tint */}
-      <ellipse cx="21.5" cy="41" rx="4.5" ry="2.8" fill="#e87820" opacity="0.22"/>
-      <ellipse cx="58.5" cy="41" rx="4.5" ry="2.8" fill="#e87820" opacity="0.22"/>
+      <ellipse cx="21.5" cy="41" rx="4.5" ry="2.8" fill="#e87820" opacity="0.28"/>
+      <ellipse cx="58.5" cy="41" rx="4.5" ry="2.8" fill="#e87820" opacity="0.28"/>
       {wave&&(
         <g className="barky-paw">
           <ellipse cx="63" cy="53" rx="7.5" ry="6.5" fill="#FFD700" stroke="#b07800" strokeWidth="1.1" transform="rotate(-30 63 53)"/>
@@ -137,8 +144,12 @@ function BarkyErrorCard({message,onRetry,isConnectError}:{message:string;onRetry
 }
 
 // ---- Main Barky widget -----------------------------------------------------
+// Public routes that intentionally show Barky even though they are not behind auth --
+// a visitor shopping or reading how pickup works is exactly who the suggested prompts target.
+const HIDDEN_ON=new Set(["/"]);
 export function BarkyWidget(){
   const{api}=useSession();
+  const{pathname}=useLocation();
   const[state,setState]=useState<BarkyState>("idle");
   const[msgs,setMsgs]=useState<BarkyMsg[]>([]);
   const[input,setInput]=useState("");
@@ -199,6 +210,10 @@ export function BarkyWidget(){
   const handleKey=(e:React.KeyboardEvent<HTMLInputElement>)=>{
     if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void send();}
   };
+
+  // Hooks above must run on every render regardless of route, so the landing-page opt-out is a plain
+  // return after them, not an early return before -- keeps hook order stable per React's rules.
+  if(HIDDEN_ON.has(pathname))return null;
 
   if(state==="idle"){
     return(
