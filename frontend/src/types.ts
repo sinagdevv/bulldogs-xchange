@@ -4,7 +4,7 @@ export type QueueStatus="Waiting"|"Serving"|"Skipped"|"Completed"|"Left";
 export type ApprovalStatus="pending"|"approved"|"rejected"|"suspended";
 export interface User{id:string;email:string;displayName:string;role:Role;department?:string;customerType?:string;schoolId?:string;isActive?:boolean;approvalStatus?:ApprovalStatus;rejectionReason?:string}
 export interface Category{id:string;title:string;isActive:boolean}
-export interface Product{id:string;title:string;categoryId:string;sku:string;description:string;price:number;imageUrl?:string;isFeatured:boolean;isActive:boolean}
+export interface Product{id:string;title:string;categoryId:string;sku:string;description:string;price:number;imageUrl?:string;isFeatured:boolean;isActive:boolean;supplemental?:boolean}
 export interface Variant{id:string;productId:string;name:string;variantSku:string;isActive:boolean}
 export interface Availability{productVariantId:string;physicalQuantity:number;reservedQuantity:number;reorderLevel:number;availableQuantity:number;status:"Out of Stock"|"Low Stock"|"Healthy"}
 export interface Reservation{id:string;reference:string;customerEmail:string;status:ReservationStatus;expiresAt:string;createdAt:string;updatedAt:string}
