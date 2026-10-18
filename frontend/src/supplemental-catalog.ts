@@ -171,24 +171,46 @@ export const supplementalProducts: Product[] = [
   },
 
   // ── TRADITIONAL UNIFORM (TRAD) ───────────────────────────────────────────
-  // 2026-10 pass: the whole TRAD group was removed. TRAD-SKRT-001 is hidden
-  // per explicit request. TRAD-TOP-001/002 were visually compared against the
+  // 2026-10 correction: TRAD-SKRT-001 was removed in error and is restored
+  // here as a single canonical listing. It is shown under BOTH the official
+  // SHS and College category filters (see CROSS_LISTED_SKUS below) without
+  // being duplicated into two product cards -- the real SHS/College category
+  // ids live only in the production database, so the frontend resolves them
+  // at request time (frontend/src/api.ts) and passes them in. No standalone
+  // "Traditional (College/SHS)" filter chip is reintroduced. Price is unverified,
+  // so it stays PRICE_ON_INQUIRY rather than a fabricated number.
+  // TRAD-TOP-001/002 remain removed: they were visually compared against the
   // official product photos and are the same garments as COL-BLSE-F (female
   // blouse, identical NJ-1900 shield, piping and cut) and COL-POLO-M (male
   // polo, identical shield and collar) -- genuine duplicates, official DB
-  // entries take precedence. With all three gone the "Traditional
-  // (College/SHS)" category is empty and has been removed below; there was
-  // nothing left to reassign to the College/SHS filters.
+  // entries take precedence.
+  {
+    id: "supp-TRAD-SKRT-001", sku: "TRAD-SKRT-001",
+    title: "Traditional Skirt", categoryId: "supp-trad",
+    description: "Traditional uniform skirt, shared by the SHS and College traditional sets.",
+    price: PRICE_ON_INQUIRY, imageUrl: showcase("TRAD-SKRT-001-FRONT-CUTOUT.webp"),
+    isFeatured: false, isActive: true, supplemental: true,
+  },
 ];
+
+/**
+ * SKUs that must also appear when the official SHS or College category
+ * filter is selected, in addition to (not instead of) their own listing.
+ * Resolved real category ids are supplied by the caller at request time --
+ * this file never hardcodes production database ids. Listing a SKU here
+ * does not duplicate its card: a product is rendered once per filter view,
+ * and a single view only ever shows one category at a time.
+ */
+export const CROSS_LISTED_SKUS = new Set<string>(["TRAD-SKRT-001"]);
 
 /** Returns true when id belongs to a supplemental (non-DB) product. */
 export const isSupplementalId = (id: string) => id.startsWith("supp-");
 
 /** Filter supplemental products by category and search term (mirrors the API's behavior). */
-export function filterSupplemental(categoryId?: string, search?: string): Product[] {
+export function filterSupplemental(categoryId?: string, search?: string, crossListCategoryIds: readonly string[] = []): Product[] {
   const term = search?.trim().toLowerCase() ?? "";
   return supplementalProducts.filter(p =>
-    (!categoryId || p.categoryId === categoryId) &&
+    (!categoryId || p.categoryId === categoryId || (CROSS_LISTED_SKUS.has(p.sku) && crossListCategoryIds.includes(categoryId))) &&
     (!term || `${p.title} ${p.description} ${p.sku}`.toLowerCase().includes(term))
   );
 }
