@@ -8,14 +8,14 @@ import {useLocation} from "react-router-dom";
 import {useSession} from "./session";
 
 // ---- Types -----------------------------------------------------------------
-interface BarkyMsg {id:string;role:"user"|"assistant";content:string;ts:number}
+interface BarkyMsg {id:string;role:"user"|"assistant";content:string;ts:number;degraded?:boolean}
 type BarkyState="idle"|"open"
 
 const SUGGESTED=[
-  "What uniforms does Bulldogs Xchange carry?",
-  "How do I pick up my reservation?",
-  "What's available to reserve right now?",
-  "How does the pickup queue work?",
+  {label:"Uniforms & gear",full:"What uniforms does Bulldogs Xchange carry?"},
+  {label:"Pickup steps",full:"How do I pick up my reservation?"},
+  {label:"What's available",full:"What's available to reserve right now?"},
+  {label:"Queue info",full:"How does the pickup queue work?"},
 ];
 
 // ---- Barky mascot SVG — muscular gold NU bulldog, rubber-hose 1930s-cartoon outline ----
@@ -101,9 +101,33 @@ function TypingDots(){
 }
 
 // ---- Message bubble --------------------------------------------------------
-function BarkyBubble({msg}:{msg:BarkyMsg}){
+// A "degraded" reply (both AI providers were unreachable) is real conversation history, not an
+// exception -- it stays in the message list in order, but renders as a clearly-marked notice card
+// instead of a plain reply, with a retry action on only the most recent one.
+export function BarkyBubble({msg,onRetry}:{msg:BarkyMsg;onRetry?:()=>void}){
   const isUser=msg.role==="user";
   const time=new Date(msg.ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  if(msg.degraded){
+    return(
+      <div className="barky-bubble barky-assistant" role="status">
+        <div className="barky-avatar-sm" aria-hidden="true"><BarkyMascot size={30} state="error"/></div>
+        <div className="barky-bubble-body">
+          <div className="barky-degraded-card">
+            <strong>Running without AI right now</strong>
+            <p>{msg.content}</p>
+            {onRetry&&<button className="barky-retry-btn barky-retry-inline" onClick={onRetry}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M2 8C2 4.69 4.69 2 8 2a6 6 0 0 1 5.2 3H11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M14 8c0 3.31-2.69 6-6 6a6 6 0 0 1-5.2-3H5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Try again
+            </button>}
+          </div>
+          <time dateTime={new Date(msg.ts).toISOString()} className="barky-ts">{time}</time>
+        </div>
+      </div>
+    );
+  }
   return(
     <div className={`barky-bubble ${isUser?"barky-user":"barky-assistant"}`}>
       {!isUser&&<div className="barky-avatar-sm" aria-hidden="true"><BarkyMascot size={30} state="responding"/></div>}
@@ -111,6 +135,20 @@ function BarkyBubble({msg}:{msg:BarkyMsg}){
         <p>{msg.content}</p>
         <time dateTime={new Date(msg.ts).toISOString()} className="barky-ts">{time}</time>
       </div>
+    </div>
+  );
+}
+
+// ---- Empty-state hero --------------------------------------------------------
+// Shown instead of the plain welcome bubble on first open, before anything has been asked --
+// a bigger, centered mascot moment rather than a one-line chat message.
+export function BarkyHero(){
+  return(
+    <div className="barky-hero">
+      <div className="barky-hero-glow" aria-hidden="true"/>
+      <div className="barky-hero-mascot"><BarkyMascot size={64} state="idle"/></div>
+      <strong className="barky-hero-title">Hey, I&apos;m Barky!</strong>
+      <p className="barky-hero-sub">Ask about uniforms, merchandise, or how campus pickup works.</p>
     </div>
   );
 }
@@ -175,6 +213,7 @@ export function BarkyWidget(){
   const[connectError,setConnectError]=useState(false);
   const[aiUnavailable,setAiUnavailable]=useState(false);
   const[sending,setSending]=useState(false);
+  const lastUserTextRef=useRef("");
   const msgEndRef=useRef<HTMLDivElement>(null);
   const inputRef=useRef<HTMLInputElement>(null);
 
@@ -209,13 +248,14 @@ export function BarkyWidget(){
     if(!msg||!sessionId||sending)return;
     setInput("");setError("");setConnectError(false);setSending(true);
     const userMsg:BarkyMsg={id:`u-${Date.now()}`,role:"user",content:msg,ts:Date.now()};
+    lastUserTextRef.current=msg;
     setMsgs(m=>[...m,userMsg]);
     try{
       const data=await api.request<{reply:string;aiAvailable:boolean}>("barky/chat",{
         method:"POST",body:JSON.stringify({sessionId,message:msg}),
       });
       setAiUnavailable(!data.aiAvailable);
-      setMsgs(m=>[...m,{id:`a-${Date.now()}`,role:"assistant",content:data.reply,ts:Date.now()}]);
+      setMsgs(m=>[...m,{id:`a-${Date.now()}`,role:"assistant",content:data.reply,ts:Date.now(),degraded:!data.aiAvailable}]);
     }catch(e){
       setAiUnavailable(true);
       setError(e instanceof Error?e.message:"Barky had trouble responding.");
@@ -226,6 +266,8 @@ export function BarkyWidget(){
   const handleKey=(e:React.KeyboardEvent<HTMLInputElement>)=>{
     if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void send();}
   };
+
+  const isEmptyState=msgs.length===1&&msgs[0]!.id==="welcome"&&!sending;
 
   // Hooks above must run on every render regardless of route, so the landing-page opt-out is a plain
   // return after them, not an early return before -- keeps hook order stable per React's rules.
@@ -273,7 +315,9 @@ export function BarkyWidget(){
       <div className="barky-messages" aria-live="polite" aria-atomic="false">
         {connecting&&!sessionId&&<BarkyConnecting/>}
         {connectError&&error&&<BarkyErrorCard message={error} onRetry={()=>void startSession()} isConnectError={true}/>}
-        {msgs.map(m=><BarkyBubble key={m.id} msg={m}/>)}
+        {isEmptyState?<BarkyHero/>:msgs.map((m,i)=>(
+          <BarkyBubble key={m.id} msg={m} onRetry={m.degraded&&i===msgs.length-1&&!sending?()=>void send(lastUserTextRef.current):undefined}/>
+        ))}
         {sending&&(
           <div className="barky-bubble barky-assistant">
             <div className="barky-avatar-sm" aria-hidden="true"><BarkyMascot size={30} state="thinking"/></div>
@@ -281,7 +325,7 @@ export function BarkyWidget(){
           </div>
         )}
         {!connectError&&error&&(
-          <BarkyErrorCard message={error} onRetry={()=>void send()} isConnectError={false}/>
+          <BarkyErrorCard message={error} onRetry={()=>void send(lastUserTextRef.current)} isConnectError={false}/>
         )}
         <div ref={msgEndRef}/>
       </div>
@@ -290,7 +334,10 @@ export function BarkyWidget(){
       {msgs.length<=1&&!sending&&sessionId&&(
         <div className="barky-suggestions">
           {SUGGESTED.map(s=>(
-            <button key={s} className="barky-suggest-btn" onClick={()=>void send(s)}>{s}</button>
+            <button key={s.label} className="barky-suggest-btn" onClick={()=>void send(s.full)}>
+              <strong>{s.label}</strong>
+              <span>{s.full}</span>
+            </button>
           ))}
         </div>
       )}

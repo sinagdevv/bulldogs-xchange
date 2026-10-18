@@ -9,6 +9,22 @@ describe("API errors",()=>{
   it("turns connection failures into a safe network error",async()=>{vi.stubGlobal("fetch",vi.fn(async()=>{throw new TypeError("secret network detail")}));await expect(new ApiClient(auth,"/api").request("products")).rejects.toMatchObject({code:"NETWORK_ERROR",message:"The service is currently unreachable.",status:0});});
   it("keeps source catalog products even when an image is not yet recorded",async()=>{vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({success:true,data:[{id:"1",title:"PE Shirt",categoryId:"1",sku:"PE-SHIRT",description:"Official PE uniform shirt",price:300,isFeatured:false,isActive:true}]}),{status:200})));await expect(new ApiClient(auth,"/api").products()).resolves.toEqual(expect.arrayContaining([expect.objectContaining({sku:"PE-SHIRT",title:"PE Shirt"})]));});
   it("does not rewrite source catalog fields",async()=>{vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({success:true,data:[{id:"1",title:"NU Bulldogs Shirt",categoryId:"5",sku:"MRC-SHIRT",description:"NU Bulldogs merchandise shirt",price:299,isFeatured:true,isActive:true}]}),{status:200})));await expect(new ApiClient(auth,"/api").products()).resolves.toEqual(expect.arrayContaining([expect.objectContaining({title:"NU Bulldogs Shirt",description:"NU Bulldogs merchandise shirt"})]));});
+  it("cross-lists the restored traditional skirt under both the SHS and College filters, without duplicating it in the unfiltered view",async()=>{
+    const fetcher=vi.fn<typeof fetch>(async(input:RequestInfo|URL)=>{
+      const url=String(input);
+      if(url.includes("category=cat-shs"))return new Response(JSON.stringify({success:true,data:[{id:"1",title:"SHS Polo",categoryId:"cat-shs",sku:"SHS-POLO-M",description:"",price:650,isFeatured:false,isActive:true}]}),{status:200});
+      if(url.includes("category=cat-college"))return new Response(JSON.stringify({success:true,data:[{id:"2",title:"College Polo",categoryId:"cat-college",sku:"COL-POLO-M",description:"",price:650,isFeatured:false,isActive:true}]}),{status:200});
+      return new Response(JSON.stringify({success:true,data:[{id:"1",title:"SHS Polo",categoryId:"cat-shs",sku:"SHS-POLO-M",description:"",price:650,isFeatured:false,isActive:true},{id:"2",title:"College Polo",categoryId:"cat-college",sku:"COL-POLO-M",description:"",price:650,isFeatured:false,isActive:true}]}),{status:200});
+    });
+    vi.stubGlobal("fetch",fetcher);
+    const client=new ApiClient(auth,"/api");
+    const shsView=await client.products({category:"cat-shs"});
+    expect(shsView.filter(p=>p.sku==="TRAD-SKRT-001")).toHaveLength(1);
+    const collegeView=await client.products({category:"cat-college"});
+    expect(collegeView.filter(p=>p.sku==="TRAD-SKRT-001")).toHaveLength(1);
+    const allView=await client.products();
+    expect(allView.filter(p=>p.sku==="TRAD-SKRT-001")).toHaveLength(1);
+  });
   it("keeps source category labels",async()=>{vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({success:true,data:[{id:"1",title:"SHS",isActive:true}]}),{status:200})));await expect(new ApiClient(auth,"/api").categories()).resolves.toEqual(expect.arrayContaining([expect.objectContaining({title:"SHS"})]));});
   it("posts customer onboarding with bearer authentication",async()=>{const fetcher=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{void input;void init;return new Response(JSON.stringify({success:true,data:{id:"7",role:"Customer"}}),{status:201})});vi.stubGlobal("fetch",fetcher);await new ApiClient(auth,"/api").onboard({schoolId:"2026-7",fullName:"New User",customerType:"Student"});expect(fetcher).toHaveBeenCalledWith("/api/onboarding/customer",expect.objectContaining({method:"POST",headers:expect.any(Headers)}));expect((fetcher.mock.calls[0]![1]!.headers as Headers).get("Authorization")).toBe("Bearer token");});
   it("loads Admin users and changes roles through existing endpoints",async()=>{const fetcher=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{void init;return new Response(JSON.stringify({success:true,data:String(input).endsWith("/role")?{id:"7",role:"Staff"}:[]}),{status:200})});vi.stubGlobal("fetch",fetcher);await new ApiClient(auth,"/api").users();await new ApiClient(auth,"/api").changeUserRole("7","Staff");expect(fetcher.mock.calls.map(call=>String(call[0]))).toEqual(["/api/admin/users","/api/admin/users/7/role"]);expect(fetcher.mock.calls[1]![1]).toMatchObject({method:"PUT",body:'{"role":"Staff"}'});});
