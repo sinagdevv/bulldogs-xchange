@@ -4,6 +4,8 @@ import type { RequestLike } from "../lib/http.js";
 import type { SharePointRepository } from "../repositories/repository.js";
 import { SupabaseAuthProvider, type AuthProvider } from "../auth/auth-provider.js";
 
+const mayUseLegacyEmail=(principal:{email:string;provider?:string})=>principal.provider===undefined||(principal.provider==="email"&&/@(students\.)?nu-fairview\.edu\.ph$/i.test(principal.email));
+
 export class AuthService {
   constructor(private repo: SharePointRepository,private provider:AuthProvider=new SupabaseAuthProvider()) {}
 
@@ -19,7 +21,7 @@ export class AuthService {
     const devEmail=!production&&process.env.LOCAL_DEMO!=="true"&&process.env.ENABLE_DEV_AUTH==="true"?String(req.headers["x-dev-user"]??process.env.DEV_AUTH_EMAIL??"").trim().toLowerCase():"";
     const principal=devEmail?{subject:`development:${devEmail}`,email:devEmail}:await this.provider.authenticate(req);
     if(!principal)return null;
-    const user=devEmail||principal.subject.startsWith("local:")?await this.repo.getUserByEmail(principal.email.trim().toLowerCase()):await this.repo.getUserByAuthSubject(principal.subject)??await this.repo.getUserByEmail(principal.email.trim().toLowerCase());
+    const user=devEmail||principal.subject.startsWith("local:")?await this.repo.getUserByEmail(principal.email.trim().toLowerCase()):await this.repo.getUserByAuthSubject(principal.subject)??(mayUseLegacyEmail(principal)?await this.repo.getUserByEmail(principal.email.trim().toLowerCase()):undefined);
     if(!user)throw new AppError("FORBIDDEN","Authenticated identity is not registered.");
     return user;
   }
@@ -34,7 +36,7 @@ export class AuthService {
   }
 
   async getRegisteredUser(req:RequestLike){
-    const production=process.env.VERCEL_ENV==="production"||process.env.NODE_ENV==="production",identity=await this.getIdentity(req),devEmail=!production&&process.env.ENABLE_DEV_AUTH==="true"?String(req.headers["x-dev-user"]??process.env.DEV_AUTH_EMAIL??"").trim().toLowerCase():"",user=devEmail||identity.subject.startsWith("local:")?await this.repo.getUserByEmail(identity.email):await this.repo.getUserByAuthSubject(identity.subject)??await this.repo.getUserByEmail(identity.email);
+    const production=process.env.VERCEL_ENV==="production"||process.env.NODE_ENV==="production",identity=await this.getIdentity(req),devEmail=!production&&process.env.ENABLE_DEV_AUTH==="true"?String(req.headers["x-dev-user"]??process.env.DEV_AUTH_EMAIL??"").trim().toLowerCase():"",user=devEmail||identity.subject.startsWith("local:")?await this.repo.getUserByEmail(identity.email):await this.repo.getUserByAuthSubject(identity.subject)??(mayUseLegacyEmail(identity)?await this.repo.getUserByEmail(identity.email):undefined);
     if(user)this.ensureApproved(user);
     return{identity,user};
   }

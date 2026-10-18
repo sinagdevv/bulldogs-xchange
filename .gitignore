@@ -2,6 +2,7 @@ node_modules/
 dist/
 .vercel/
 .env*
+operator-accounts.local.json
 local-demo-credentials.txt
 !.env.example
 !.env.financial-staging.example

@@ -19,7 +19,7 @@ import {AdminHome,AdminAnalytics,AdminApprovals,AdminInventory,AdminProducts,Adm
 
 const ROOT=DEMO_ROOT;
 const noopApi=null as unknown as SessionState["api"];
-const base:Omit<SessionState,"session"|"authOpen"|"authMode"|"closeAuth"|"login"|"loginOtp"|"requestOtp"|"register"|"logout">={loading:false,error:null,api:noopApi,openAuth:()=>{},requestPasswordReset:async()=>{},reload:async()=>{}};
+const base:Omit<SessionState,"session"|"authOpen"|"authMode"|"closeAuth"|"login"|"startGoogleSignIn"|"completeGoogleSignIn"|"loginOtp"|"requestOtp"|"register"|"logout">={loading:false,error:null,api:noopApi,openAuth:()=>{},requestPasswordReset:async()=>{},reload:async()=>{}};
 
 /* ---------- Scaffolding ---------- */
 function PvBar(){return <header className="pv-bar"><NavLink to={ROOT} aria-label="Design preview index"><Brand size={34}/></NavLink><strong className="dev-badge">Design preview</strong><span className="spacer"/><NavLink className="text-link" to={ROOT}><Icon name="back"/>All previews</NavLink><NavLink className="btn btn-sm" to="/">Live landing page</NavLink></header>}
@@ -51,7 +51,7 @@ function BrandSheet(){return <PvPage title="Brand sheet" description="Official N
 /* ---------- Auth and status ---------- */
 function AuthPreview({mode}:{mode:"login"|"register"}){
   const navigate=useNavigate();
-  const value:SessionState={...base,session:{authenticated:false,user:null},authOpen:true,authMode:mode,closeAuth:()=>navigate(ROOT),login:async()=>{navigate(`${ROOT}/student`)},loginOtp:async()=>{navigate(`${ROOT}/student`)},requestOtp:async()=>{},register:async()=>{navigate(`${ROOT}/status`)},logout:async()=>{}};
+  const value:SessionState={...base,session:{authenticated:false,user:null},authOpen:true,authMode:mode,closeAuth:()=>navigate(ROOT),login:async()=>{navigate(`${ROOT}/student`)},startGoogleSignIn:async()=>{},completeGoogleSignIn:async()=>{},loginOtp:async()=>{navigate(`${ROOT}/student`)},requestOtp:async()=>{},register:async()=>{navigate(`${ROOT}/status`)},logout:async()=>{}};
   return <SessionContext.Provider value={value}><div className="pv-stage"><PvBar/><div className="container pv-stage-copy"><span className="eyebrow on-dark">Design preview</span><h1>{mode==="login"?"Student portal":"Create your account"}</h1><p>Preview only: credentials are not checked or sent anywhere. Logging in opens the student demo, and registering shows the Pending Approval screen.</p></div><AuthPanel/></div></SessionContext.Provider>;
 }
 function StatusPreview(){const[s,setS]=useState<"pending"|"rejected"|"suspended">("pending");return <PvPage title="Account status states"><div className="tabs" role="tablist">{(["pending","rejected","suspended"] as const).map(x=><button key={x} type="button" role="tab" aria-selected={s===x} className="tab" onClick={()=>setS(x)}>{x[0]!.toUpperCase()+x.slice(1)}</button>)}</div><ApprovalView status={s} reason={s==="rejected"?"Student ID does not match school records.":undefined} justRegistered={s==="pending"}/></PvPage>}
