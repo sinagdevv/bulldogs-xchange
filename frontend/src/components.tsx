@@ -36,7 +36,7 @@ export function Modal({title,description,onClose,children,footer,wide,role="dial
 }
 
 /* ---------------- Merchandise ---------------- */
-/** Catalog image (Product.imageUrl) when recorded, otherwise the branded placeholder. Real photos are added later by filling imageUrl. */
+/** Uses a stored catalog URL first, then the reviewed SKU asset, then an honest placeholder. */
 export const ProductWatermark=()=>CREST_SRC?<img className="product-watermark" src={CREST_SRC} alt="" aria-hidden="true"/>:null;
 export function ProductImage({product,eager}:{product:Product;eager?:boolean}){return <><ProductWatermark/><ImageOrPlaceholder src={productImage(product)} alt={product.title} eager={eager}/></>}
 export function ProductCard({product,to}:{product:Product;to?:string}){return <article className="product-card"><div className="product-media"><ProductImage product={product}/>{product.isFeatured&&<span className="badge warning plain flag">Featured</span>}</div><div className="product-info"><span className="sku">{product.sku}</span><h3><NavLink className="stretched" to={to??`/shop/${product.id}`}>{product.title}</NavLink></h3><p>{product.description}</p><div className="card-foot"><span className="price">{formatPeso(product.price)}</span><span className="view-more" aria-hidden="true">View details<Icon name="arrow"/></span></div></div></article>}

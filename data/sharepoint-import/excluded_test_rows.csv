@@ -1,0 +1,5 @@
+source,source_id,sku_or_title,reason
+Categories.csv,7,TestCategory,Inactive test category: excluded
+Products.csv,21,Test Product Updated,Inactive test product: excluded
+Product Variants.csv,80,1,Inactive or incomplete test variant: excluded
+Inventory.csv,80,TEST-VARIANT-001,Test inventory row: excluded

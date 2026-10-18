@@ -41,7 +41,8 @@
     "test:live:reservation-notification": "npm run build --silent && node --env-file=.env.local scripts/live-reservation-notification.mjs",
     "auth:bootstrap-admin": "npm run build --silent && node --env-file=.env.local dist/src/cli/bootstrap-admin.js",
     "auth:provision-accounts": "npm run build --silent && node --env-file=.env.local dist/src/cli/provision-accounts.js",
-    "auth:provision-single-account": "npm run build --silent && node --env-file=.env.local dist/src/cli/provision-single-account.js"
+    "auth:provision-single-account": "npm run build --silent && node --env-file=.env.local dist/src/cli/provision-single-account.js",
+    "catalog:sharepoint:dry-run": "npm run build --silent && node --env-file=.env.local dist/src/cli/import-sharepoint-catalog.js"
   },
   "dependencies": {
     "jose": "^6.2.12",

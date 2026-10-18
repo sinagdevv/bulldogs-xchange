@@ -1,0 +1,20 @@
+sp_product_id,sp_category_id,sku,name,description,price_php,image_url,is_featured,is_active
+1,1,SHS-POLO-M,Traditional Polo - Male,SHS traditional polo for male students,650.00,,false,true
+2,1,SHS-PANTS-M,Traditional Pants - Male,SHS traditional pants for male students,550.00,,false,true
+3,1,SHS-BLSE-F,Traditional Blouse - Female,SHS traditional blouse for female students,650.00,,false,true
+4,1,SHS-PANTS-F,Traditional Pants - Female,SHS traditional pants for female students,550.00,,false,true
+5,2,COL-POLO-M,Traditional Polo - Male,College traditional polo for male students,650.00,,false,true
+6,2,COL-PANTS-M,Traditional Pants - Male,College traditional pants for male students,550.00,,false,true
+7,2,COL-BLSE-F,Traditional Blouse - Female,College traditional blouse for female students,650.00,,false,true
+8,2,COL-PANTS-F,Traditional Pants - Female,College traditional pants for female students,550.00,,false,true
+9,2,COL-PANTS-W,Traditional Pants - Women,College traditional pants for women,550.00,,false,true
+10,3,PE-SHIRT,PE Shirt,Official PE uniform shirt,300.00,,false,true
+11,3,PE-JOG,PE Jogging Pants,Official PE jogging pants,400.00,,false,true
+12,4,NSTP-SHIRT,NSTP Shirt,Official NSTP shirt,300.00,,false,true
+13,5,MRC-SHIRT,NU Bulldogs Shirt,NU Bulldogs merchandise shirt,299.00,,true,true
+14,5,MRC-TOTE,NU Tote Bag,NU Bulldogs tote bag,100.00,,true,true
+15,5,MRC-CAP,NU Cap,NU cap,249.00,,true,true
+16,5,MRC-SWEAT,NU Sweatshirt,NU sweatshirt,699.00,,true,true
+17,5,MRC-VARSITY,NU Varsity Jacket,NU varsity jacket,899.00,,false,true
+18,5,MRC-LFAN,NU Led Fan,NU LED desk fan,699.00,,false,true
+19,5,MRC-HFAN,NU Handy Fan,NU handheld fan,299.00,,true,true

@@ -1,31 +1,21 @@
 import {useEffect,useMemo,useState} from "react";
 import {useProducts} from "./use-products";
 import {NavLink,useLocation} from "react-router-dom";
-import {PageHeader} from "./components";
+import {Empty,ErrorState,PageHeader,ProductCard,ProductGridSkeleton} from "./components";
 import {useSession} from "./session";
 import type {Category} from "./types";
 import {Icon} from "./icons";
-import {showcaseItems} from "./showcase";
 
 export {Landing} from "./landing";
 import {faq,journey,phases,stepResults} from "./content";
 import {isStaticPreview} from "./deployment-mode";
 import {useReveal} from "./motion";
 
-type CatalogCollectionItem={file:string;src:string;title:string;category:string;type:string;studio:boolean};
-function CatalogCollectionCard({item}:{item:CatalogCollectionItem}){return<article className="lp-card2 collection-only"><div className="lp-photo"><img src={item.src} alt={item.title} loading="lazy"/></div><div className="lp-meta"><span><b>{item.title}</b><small>{item.type} · {item.category}</small></span><span className="coll-only-pill">Collection</span></div></article>}
-
-export function Catalog(){const{api}=useSession();useProducts();const[categories,setCategories]=useState<Category[]>([]),[category,setCategory]=useState(""),[search,setSearch]=useState("");useEffect(()=>{const c=new AbortController();api.categories(c.signal).then(setCategories).catch(()=>{/* filters stay hidden when categories are unavailable */});return()=>c.abort()},[api]);const active=categories.filter(c=>c.isActive);
-  const collectionItems=useMemo(()=>{if(!search)return showcaseItems;const q=search.toLowerCase();return showcaseItems.filter(i=>i.title.toLowerCase().includes(q)||i.type.toLowerCase().includes(q)||i.category.toLowerCase().includes(q))},[search]);
-  const collectionGroups=useMemo(()=>{const map=new Map<string,typeof showcaseItems>();for(const item of collectionItems){const g=map.get(item.category)??[];g.push(item);map.set(item.category,g)}return[...map.entries()]},[collectionItems]);
-  const showCollection=!category&&collectionGroups.length>0;
+export function Catalog(){const{api}=useSession(),{products,error,retry}=useProducts();const[categories,setCategories]=useState<Category[]>([]),[category,setCategory]=useState(""),[search,setSearch]=useState("");useEffect(()=>{const c=new AbortController();api.categories(c.signal).then(setCategories).catch(()=>{/* filters stay hidden when categories are unavailable */});return()=>c.abort()},[api]);const active=categories.filter(c=>c.isActive),visible=useMemo(()=>{const term=search.trim().toLowerCase();return(products??[]).filter(product=>(!category||product.categoryId===category)&&(!term||`${product.title} ${product.description} ${product.sku}`.toLowerCase().includes(term)))},[products,category,search]);
   return <section className="container page"><PageHeader eyebrow="Bulldogs collection" title="Campus merchandise" description="Browse the live catalog. Log in with an approved student account to choose sizes and reserve for campus pickup."/>
     <div className="toolbar"><label className="search"><span className="sr-only">Search merchandise</span><Icon name="search"/><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search merchandise or uniforms"/></label></div>
     {active.length>0&&<div className="chips toolbar-chips" role="group" aria-label="Filter by category"><button type="button" className="chip" aria-pressed={!category} onClick={()=>setCategory("")}>All</button>{active.map(c=><button type="button" key={c.id} className="chip" aria-pressed={category===c.id} onClick={()=>setCategory(c.id)}>{c.title}</button>)}</div>}
-    {showCollection&&<section className="collection-section" aria-label="Campus collection">
-      <div className="section-head"><div><h2>Campus collection</h2><p>Program uniforms and official merchandise available at Bulldogs Xchange.</p></div></div>
-      {collectionGroups.map(([cat,items])=><div key={cat} className="collection-category"><h3 className="collection-cat-title">{cat}</h3><div className="collection-grid">{items.map(item=><CatalogCollectionCard key={item.file} item={item}/>)}</div></div>)}
-    </section>}
+    {error?<ErrorState message={error} onRetry={retry}/>:!products?<ProductGridSkeleton/>:visible.length?<div className="product-grid">{visible.map(product=><ProductCard key={product.id} product={product}/>)}</div>:<Empty icon="shop" title="No merchandise found." message="Try a different search or category."/>}
   </section>}
 
 export function InfoPage(){const{openAuth,session}=useSession(),{hash}=useLocation();useReveal();

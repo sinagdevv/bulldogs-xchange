@@ -1,0 +1,6 @@
+sp_category_id,name,is_active
+1,SHS,true
+2,College,true
+3,PE,true
+4,NSTP,true
+5,Merch,true

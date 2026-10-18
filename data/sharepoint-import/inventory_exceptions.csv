@@ -1,0 +1,5 @@
+source_csv_row,sku_label,sp_variant_id,physical_quantity,reserved_quantity,reorder_level,issue
+9,SHS-PANTS-M-M,,,1,,Incomplete inventory; no reliable variant ID/physical quantity; manual review required
+23,COL-POLO-M-S,,,1,,Incomplete inventory; no reliable variant ID/physical quantity; manual review required
+25,COL-POLO-M-L,,,1,,Incomplete inventory; no reliable variant ID/physical quantity; manual review required
+26,COL-POLO-M-XL,,,1,,Incomplete inventory; no reliable variant ID/physical quantity; manual review required

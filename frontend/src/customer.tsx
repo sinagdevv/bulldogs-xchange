@@ -9,8 +9,6 @@ import {Icon} from "./icons";
 import type {Availability,Category,CatalogQuery,Notification,Product,QueueRecord,QueueSummary,Reservation,User,Variant} from "./types";
 import {belongsToCustomer,reservationValidation} from "./customer-rules";
 import {errorMessage,finalStatuses,formatDate,formatDateTime,formatPeso,isAbort,reservationCopy,reservationFlow} from "./format";
-import {isApprovedCatalogProduct} from "./product-images";
-import {showcaseItems} from "./showcase";
 
 function useCustomerData<T>(load:(signal:AbortSignal)=>Promise<T>){const[data,setData]=useState<T|null>(null),[error,setError]=useState(""),[attempt,setAttempt]=useState(0);useEffect(()=>{const c=new AbortController();load(c.signal).then(setData).catch(e=>{if(!isAbort(e))setError(errorMessage(e))});return()=>c.abort();},[attempt]);return{data,error,setData,retry:()=>{setError("");setData(null);setAttempt(a=>a+1)}};}
 
@@ -33,28 +31,19 @@ export function CustomerHome(){const{api,session}=useSession(),reservations=useC
     </div></>}
 
 /* ---------------- Catalog ---------------- */
-export function CustomerCatalog(){const{api}=useSession(),[query,setQuery]=useState<CatalogQuery>({sort:"title"}),[term,setTerm]=useState(""),[,setProducts]=useState<Product[]|null>(null),[,setError]=useState(""),[attempt]=useState(0),categories=useCustomerData<Category[]>(s=>api.categories(s));
+export function CustomerCatalog(){const{api}=useSession(),[query,setQuery]=useState<CatalogQuery>({sort:"title"}),[term,setTerm]=useState(""),[products,setProducts]=useState<Product[]|null>(null),[error,setError]=useState(""),[attempt,setAttempt]=useState(0),categories=useCustomerData<Category[]>(s=>api.categories(s));
   useEffect(()=>{const t=window.setTimeout(()=>setQuery(q=>q.search===term?q:{...q,search:term}),250);return()=>window.clearTimeout(t)},[term]);
   useEffect(()=>{const c=new AbortController();setProducts(null);setError("");api.products(query,c.signal).then(setProducts).catch(e=>{if(!isAbort(e))setError(errorMessage(e))});return()=>c.abort()},[api,query.search,query.category,query.sort,attempt]);
   const active=categories.data?.filter(c=>c.isActive)??[];
-  const collectionItems=useMemo(()=>{if(!term)return showcaseItems;const q=term.toLowerCase();return showcaseItems.filter(i=>i.title.toLowerCase().includes(q)||i.type.toLowerCase().includes(q)||i.category.toLowerCase().includes(q))},[term]);
-  const collectionGroups=useMemo(()=>{const map=new Map<string,typeof showcaseItems>();for(const item of collectionItems){const g=map.get(item.category)??[];g.push(item);map.set(item.category,g)}return[...map.entries()]},[collectionItems]);
-  const showCollection=!query.category&&collectionGroups.length>0;
   return <><PageHeader eyebrow="Shop" title="Campus merchandise" description="Live inventory for NU Fairview campus pickup. Select an item to choose a size and reserve."/>
     <div className="toolbar"><label className="search"><span className="sr-only">Search merchandise</span><Icon name="search"/><input type="search" value={term} onChange={e=>setTerm(e.target.value)} placeholder="Search merchandise or uniforms"/></label><label><span className="sr-only">Sort</span><select value={query.sort} onChange={e=>setQuery(q=>({...q,sort:e.target.value as CatalogQuery["sort"]}))}><option value="title">Sort: Name</option><option value="price">Price: low to high</option><option value="-price">Price: high to low</option></select></label></div>
     {active.length>0&&<div className="chips toolbar-chips" role="group" aria-label="Filter by category"><button type="button" className="chip" aria-pressed={!query.category} onClick={()=>setQuery(q=>({...q,category:""}))}>All</button>{active.map(c=><button type="button" key={c.id} className="chip" aria-pressed={query.category===c.id} onClick={()=>setQuery(q=>({...q,category:c.id}))}>{c.title}</button>)}</div>}
-    {showCollection&&<section className="collection-section" aria-label="Campus collection">
-      <div className="section-head"><div><h2>Campus collection</h2><p>Program uniforms and official merchandise available at Bulldogs Xchange.</p></div></div>
-      {collectionGroups.map(([cat,items])=><div key={cat} className="collection-category"><h3 className="collection-cat-title">{cat}</h3><div className="collection-grid">{items.map(item=><CollectionCard key={item.file} item={item}/>)}</div></div>)}
-    </section>}</>}
-
-type CollectionItem={file:string;src:string;title:string;category:string;type:string;studio:boolean};
-function CollectionCard({item}:{item:CollectionItem}){return<article className="lp-card2 collection-only"><div className="lp-photo"><img src={item.src} alt={item.title} loading="lazy"/></div><div className="lp-meta"><span><b>{item.title}</b><small>{item.type} · {item.category}</small></span><span className="coll-only-pill">Collection</span></div></article>}
+    {error?<ErrorState message={error} onRetry={()=>setAttempt(value=>value+1)}/>:!products?<Loading/>:products.length?<div className="product-grid">{products.map(product=><ProductCard key={product.id} product={product}/>)}</div>:<Empty icon="shop" title="No merchandise found." message="Try a different search or category."/>}</>}
 
 /* ---------------- Product details + reservation creation ---------------- */
-const stockLabel=(s?:Availability)=>!s?"Availability unavailable":s.availableQuantity<=0?"Out of stock":s.status==="Low Stock"?`Only ${s.availableQuantity} left`:`${s.availableQuantity} available`;
+const stockLabel=(s?:Availability)=>!s?"Inventory review pending":s.availableQuantity<=0?"Out of stock":s.status==="Low Stock"?`Only ${s.availableQuantity} left`:`${s.availableQuantity} available`;
 export function CustomerProductDetails(){const{id=""}=useParams(),{api}=useSession(),navigate=useNavigate(),[data,setData]=useState<{product:Product;variants:Variant[];stock:Availability[]}|null>(null),[variantId,setVariantId]=useState(""),[quantity,setQuantity]=useState(1),[review,setReview]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState("");
-  useEffect(()=>{const c=new AbortController();Promise.all([api.product(id,c.signal),api.variants(id,c.signal),api.availability(id,c.signal)]).then(([product,variants,stock])=>{if(!isApprovedCatalogProduct(product)){setError("This product is not currently available.");return;}setData({product,variants,stock});const activeVariants=variants.filter(v=>v.isActive);setVariantId((activeVariants.find(v=>(stock.find(s=>s.productVariantId===v.id)?.availableQuantity??0)>0)??activeVariants[0])?.id??"")}).catch(e=>{if(!isAbort(e))setError(errorMessage(e))});return()=>c.abort()},[api,id]);
+  useEffect(()=>{const c=new AbortController();Promise.all([api.product(id,c.signal),api.variants(id,c.signal),api.availability(id,c.signal)]).then(([product,variants,stock])=>{setData({product,variants,stock});const activeVariants=variants.filter(v=>v.isActive);setVariantId((activeVariants.find(v=>(stock.find(s=>s.productVariantId===v.id)?.availableQuantity??0)>0)??activeVariants[0])?.id??"")}).catch(e=>{if(!isAbort(e))setError(errorMessage(e))});return()=>c.abort()},[api,id]);
   if(error&&!data)return <ErrorState message={error}/>;if(!data)return <div className="pdp"><div className="skeleton" style={{aspectRatio:"1"}}/><RowsSkeleton rows={6}/></div>;
   const variants=data.variants.filter(v=>v.isActive),stock=data.stock.find(s=>s.productVariantId===variantId),available=stock?.availableQuantity??0,validation=reservationValidation(quantity,available),variant=data.variants.find(v=>v.id===variantId),total=quantity*data.product.price;
   const submit=async()=>{if(validation)return;setSaving(true);setError("");try{const reservation=await api.createReservation([{productVariantId:variantId,quantity}]);navigate(`/reservations/${reservation.id}`,{state:{success:`${reservation.reference} was reserved successfully.`}})}catch(e){setError(errorMessage(e));setReview(false)}finally{setSaving(false)}};

@@ -1,0 +1,63 @@
+{
+  "source_files": [
+    "Categories.csv",
+    "Products.csv",
+    "Product Variants.csv",
+    "Inventory.csv"
+  ],
+  "scope": "SharePoint CSV snapshot; not live SharePoint synchronization",
+  "validated_counts": {
+    "categories": 5,
+    "products": 19,
+    "variants": 79,
+    "complete_inventory_rows": 75,
+    "inventory_rows_requiring_review": 4,
+    "test_rows_excluded": 4
+  },
+  "inventory_complete_rows_physical_quantity_total": 1022,
+  "inventory_complete_rows_reserved_quantity_total": 0,
+  "inventory_complete_rows_at_or_below_reorder": 7,
+  "inventory_review_required": [
+    {
+      "sku_label": "SHS-PANTS-M-M",
+      "source_csv_row": "9",
+      "reserved_quantity": "1"
+    },
+    {
+      "sku_label": "COL-POLO-M-S",
+      "source_csv_row": "23",
+      "reserved_quantity": "1"
+    },
+    {
+      "sku_label": "COL-POLO-M-L",
+      "source_csv_row": "25",
+      "reserved_quantity": "1"
+    },
+    {
+      "sku_label": "COL-POLO-M-XL",
+      "source_csv_row": "26",
+      "reserved_quantity": "1"
+    }
+  ],
+  "featured_product_skus": [
+    "MRC-SHIRT",
+    "MRC-TOTE",
+    "MRC-CAP",
+    "MRC-SWEAT",
+    "MRC-HFAN"
+  ],
+  "sku_price_conflict_candidates": {
+    "MRC-SHIRT": "BX-SHIRT",
+    "MRC-TOTE": "BX-TOTE",
+    "MRC-CAP": "BX-CAP"
+  },
+  "inventory_policy": "Do not apply production inventory data without audited comparison to live inventory and existing reservations. CSV may be a stale snapshot.",
+  "price_policy": "Do not overwrite BX-* pricing or map BX-* to MRC-* without explicit verified business relationship.",
+  "mapping_policy": "sp IDs are external IDs; never insert as native PostgreSQL primary keys without schema verification.",
+  "hash_sha256": {
+    "Categories.csv": "1eb3debc6a2df4cbb1a771127f12352bb1a621149e5b92859db2b082b8e7bab0",
+    "Products.csv": "bbdaa5ca3f94b999815db717b7ae4f4bdbd0b8d58ecb58260cde0a75d863e1f9",
+    "Product Variants.csv": "0f9bb4dcde3b747ddb8cbb9375afeb641fd718b21135f152c8690651269fdaf1",
+    "Inventory.csv": "6133f1a7c34ff8c420b760646966d2c701541153b16210739ca3fcd24347bac9"
+  }
+}
