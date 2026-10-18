@@ -1,7 +1,7 @@
 import {renderToStaticMarkup} from "react-dom/server";
 import {MemoryRouter} from "react-router-dom";
 import {describe,expect,it,vi} from "vitest";
-import {BarkyMascot,BarkyWidget,type BarkyMascotState} from "./barky";
+import {BarkyBubble,BarkyHero,BarkyMascot,BarkyWidget,type BarkyMascotState} from "./barky";
 import {SessionContext,type SessionState} from "./session-context";
 
 // BarkyWidget only needs api.request to exist -- it is never called while the widget is closed (idle).
@@ -50,5 +50,36 @@ describe("Barky mascot states",()=>{
 
   it("defaults to the idle state when none is given",()=>{
     expect(renderToStaticMarkup(<BarkyMascot/>)).toContain("barky-mascot-idle");
+  });
+});
+
+describe("Barky degraded-reply card (the AI-unavailable fix)",()=>{
+  const bubble=(onRetry?:()=>void)=>renderToStaticMarkup(
+    <BarkyBubble msg={{id:"a1",role:"assistant",content:"Barky's AI is temporarily unavailable. Please use the live catalog for current merchandise availability or contact the Xchange team.",ts:Date.now(),degraded:true}} onRetry={onRetry}/>
+  );
+
+  it("renders a distinct notice card instead of a plain reply bubble",()=>{
+    const html=bubble();
+    expect(html).toContain("barky-degraded-card");
+    expect(html).toContain("Running without AI right now");
+  });
+
+  it("shows a retry action only when the caller supplies one",()=>{
+    expect(bubble(()=>{})).toContain("Try again");
+    expect(bubble()).not.toContain("Try again");
+  });
+
+  it("leaves an ordinary assistant reply as a plain bubble with no notice card",()=>{
+    const html=renderToStaticMarkup(<BarkyBubble msg={{id:"a2",role:"assistant",content:"Here's what we carry.",ts:Date.now()}}/>);
+    expect(html).not.toContain("barky-degraded-card");
+  });
+});
+
+describe("Barky empty-state hero",()=>{
+  it("renders a centered idle mascot with a glow and greeting copy",()=>{
+    const html=renderToStaticMarkup(<BarkyHero/>);
+    expect(html).toContain("barky-hero-glow");
+    expect(html).toContain("barky-mascot-idle");
+    expect(html).toContain("Hey, I");
   });
 });
