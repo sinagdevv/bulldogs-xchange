@@ -447,6 +447,61 @@ describe("provider fallback [MOCKED]", () => {
 
     expect(db.transaction).toHaveBeenCalledTimes(2);
   });
+
+  it("sends openai/gpt-oss-20b as the model in Groq request body (regression: llama-3.1-8b-instant removed 08/16/26)", async () => {
+    const { service, db } = makeService();
+    db.query
+      .mockResolvedValueOnce([]) // history
+      .mockResolvedValueOnce([]) // faqs
+      .mockResolvedValueOnce([]) // catalog
+      .mockResolvedValueOnce([]); // insert
+    delete process.env.MISTRAL_API_KEY;
+
+    let capturedBody: Record<string, unknown> = {};
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      capturedBody = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      return new Response(
+        JSON.stringify({ choices: [{ message: { content: "Groq reply" } }] }),
+        { status: 200 }
+      );
+    }));
+
+    await service.sendMessage(VALID_UUID, "What uniforms does Bulldogs Xchange carry?", null);
+    expect(capturedBody["model"]).toBe("openai/gpt-oss-20b");
+    expect(capturedBody["model"]).not.toBe("llama-3.1-8b-instant");
+    expect(capturedBody["model"]).not.toBe("llama3-8b-8192");
+  });
+
+  it("does not call Groq with deprecated llama-3.1-8b-instant even as fallback path", async () => {
+    // Groq 404 model_not_found is the exact production failure pattern.
+    // After the fix, this should never happen with the new model; but if Groq
+    // returns 404 again, it falls back to Mistral rather than retrying the bad model.
+    const { service, db } = makeService();
+    db.query
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({ error: { code: "model_not_found", type: "invalid_request_error" } }),
+        { status: 404 }
+      ))
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({ choices: [{ message: { content: "Mistral saved it" } }] }),
+        { status: 200 }
+      ));
+    vi.stubGlobal("fetch", fetcher);
+
+    const result = await service.sendMessage(VALID_UUID, "What uniforms are available?", null);
+    // Falls back to Mistral — still gets a reply
+    expect(result.reply).toBe("Mistral saved it");
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    // First call was Groq — verify it sent the NEW model, not the deprecated one
+    const groqBody = JSON.parse(String((fetcher.mock.calls[0]![1] as RequestInit)?.body ?? "{}")) as Record<string, unknown>;
+    expect(groqBody["model"]).toBe("openai/gpt-oss-20b");
+    expect(groqBody["model"]).not.toBe("llama-3.1-8b-instant");
+  });
 });
 
 // ---------------------------------------------------------------------------
