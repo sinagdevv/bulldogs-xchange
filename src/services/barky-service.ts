@@ -2,7 +2,7 @@
  * Barky AI service — Bulldogs Xchange shopping assistant.
  *
  * Hardening notes (Batch 3 — phase 2):
- * - Groq model updated from deprecated llama3-8b-8192 → llama-3.1-8b-instant
+ * - Groq model updated from deprecated llama3-8b-8192 → llama-3.1-8b-instant → openai/gpt-oss-20b
  * - Rate limiting delegated to PostgresRateLimitStore (same table as auth limiter)
  *   with barky-scoped keys — no in-process Map, safe for multi-instance deploys
  * - ensureTables() removed; schema managed by migration 20261016090000_barky_tables.sql
@@ -71,8 +71,9 @@ interface ProviderResponse { choices: Array<{ message: { content: string } }> }
 
 const GROQ_URL    = "https://api.groq.com/openai/v1/chat/completions";
 const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
-// llama3-8b-8192 is deprecated; llama-3.1-8b-instant is the direct production replacement.
-const GROQ_MODEL    = "llama-3.1-8b-instant";
+// llama3-8b-8192 and llama-3.1-8b-instant are both deprecated (Groq shutdown 08/16/26).
+// openai/gpt-oss-20b is the official Groq replacement (~1000 tok/s, production tier).
+const GROQ_MODEL    = "openai/gpt-oss-20b";
 const MISTRAL_MODEL = "mistral-small-latest";
 const PROVIDER_TIMEOUT_MS = 20_000;
 
