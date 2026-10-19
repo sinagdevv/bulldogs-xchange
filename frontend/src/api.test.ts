@@ -29,10 +29,12 @@ describe("API errors",()=>{
     const products=[
       ...["SHS-PANTS-F","SHS-PANTS-M","COL-PANTS-F","COL-PANTS-M","COL-PANTS-W"].map((sku,index)=>({id:String(index),title:"Traditional Pants",categoryId:index<2?"cat-shs":"cat-college",sku,description:"Traditional pants",price:550,isFeatured:false,isActive:true})),
       {id:"pe",title:"PE Jogging Pants",categoryId:"cat-pe",sku:"PE-JOG",description:"Official PE jogging pants",price:400,isFeatured:false,isActive:true},
+      {id:"sweat",title:"NU Sweatshirt",categoryId:"cat-merch",sku:"MRC-SWEAT",description:"Unavailable sweatshirt",price:699,isFeatured:true,isActive:true},
     ];
     vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({success:true,data:products}),{status:200})));
     const client=new ApiClient(auth,"/api");
     expect((await client.products()).map(p=>p.sku)).toEqual(expect.arrayContaining(["SHS-PANTS-F","SHS-PANTS-M","COL-PANTS-F","COL-PANTS-M","COL-PANTS-W"]));
+    expect((await client.products()).map(p=>p.sku)).not.toContain("MRC-SWEAT");
     expect(await client.products()).toEqual(expect.arrayContaining([expect.objectContaining({sku:"PE-JOG"})]));
     expect((await client.products({search:"pants"})).map(p=>p.sku)).toEqual(expect.arrayContaining(["SHS-PANTS-M","COL-PANTS-M","PE-JOG"]));
   });
