@@ -2,7 +2,7 @@
  * Supplemental catalog — program uniforms not yet in the Supabase database.
  *
  * These are displayed as browsable, non-reservable items.
- * Price is "upon inquiry" (price field is -1; UI detects this).
+ * Prices are clearly labelled as demo prices and do not alter official records.
  * Images are sourced from the verified /images/products/showcase/ directory.
  *
  * Records are identified via  "supp-<SKU>" IDs so they never collide with DB IDs.
@@ -12,8 +12,14 @@
 
 import type {Category,Product} from "./types";
 
-/** Sentinel price value meaning "Price upon inquiry — contact the Xchange counter." */
-export const PRICE_ON_INQUIRY = -1;
+/** Proposed, non-authoritative prices for supplemental catalog-only apparel. */
+export const supplementalDemoPrices={
+  "TM-BLAZ-001":600,"TM-COAT-001":600,"TM-PANT-001":550,"TM-SCRF-001":400,"TM-SKRT-001":500,"TM-VEST-001-F":450,"TM-VEST-001-M":450,
+  "PSY-PANT-001-F":550,"PSY-PANT-001-M":550,"PSY-SKRT-001":500,"PSY-TOP-001":500,"PSY-TOP-002":500,
+  "HM-BLAZ-001-F":600,"HM-BLAZ-001-M":600,"HM-PANT-001":550,"HM-SKRT-001":500,"HM-TOP-001":500,"HM-TOP-002":500,"HM-VEST-001-F":450,"HM-VEST-001-M":450,
+  "TRAD-SKRT-001":500,
+} as const satisfies Record<string,number>;
+const demoPrice=(sku:keyof typeof supplementalDemoPrices)=>supplementalDemoPrices[sku];
 
 export const supplementalCategories: Category[] = [
   {id: "supp-tm",   title: "Tourism Management",     isActive: true},
@@ -29,49 +35,49 @@ export const supplementalProducts: Product[] = [
     id: "supp-TM-BLAZ-001", sku: "TM-BLAZ-001",
     title: "TM Blazer", categoryId: "supp-tm",
     description: "Tourism Management uniform blazer.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("TM-BLAZ-001-FRONT.webp"),
+    price: demoPrice("TM-BLAZ-001"), imageUrl: showcase("TM-BLAZ-001-FRONT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-TM-COAT-001", sku: "TM-COAT-001",
     title: "TM Coat", categoryId: "supp-tm",
     description: "Tourism Management uniform coat.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("TM-COAT-001-FRONT.webp"),
+    price: demoPrice("TM-COAT-001"), imageUrl: showcase("TM-COAT-001-FRONT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-TM-PANT-001", sku: "TM-PANT-001",
     title: "TM Trousers", categoryId: "supp-tm",
     description: "Tourism Management uniform trousers.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("TM-PANT-001-FRONT.webp"),
+    price: demoPrice("TM-PANT-001"), imageUrl: showcase("TM-PANT-001-FRONT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-TM-SCRF-001", sku: "TM-SCRF-001",
     title: "TM Scarf / Necktie", categoryId: "supp-tm",
     description: "Tourism Management uniform scarf or necktie accessory.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("TM-SCRF-001-FRONT-CUTOUT.webp"),
+    price: demoPrice("TM-SCRF-001"), imageUrl: showcase("TM-SCRF-001-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-TM-SKRT-001", sku: "TM-SKRT-001",
     title: "TM Skirt", categoryId: "supp-tm",
     description: "Tourism Management uniform skirt (female).",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("TM-SKRT-001-FRONT.webp"),
+    price: demoPrice("TM-SKRT-001"), imageUrl: showcase("TM-SKRT-001-FRONT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-TM-VEST-001-F", sku: "TM-VEST-001-F",
     title: "TM Vest (Female)", categoryId: "supp-tm",
     description: "Tourism Management uniform vest — female cut.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("TM-VEST-001-F-FRONT-CUTOUT.webp"),
+    price: demoPrice("TM-VEST-001-F"), imageUrl: showcase("TM-VEST-001-F-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-TM-VEST-001-M", sku: "TM-VEST-001-M",
     title: "TM Vest (Male)", categoryId: "supp-tm",
     description: "Tourism Management uniform vest — male cut.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("TM-VEST-001-M-FRONT-CUTOUT.webp"),
+    price: demoPrice("TM-VEST-001-M"), imageUrl: showcase("TM-VEST-001-M-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
 
@@ -80,35 +86,35 @@ export const supplementalProducts: Product[] = [
     id: "supp-PSY-PANT-001-F", sku: "PSY-PANT-001-F",
     title: "PSY Trousers (Female)", categoryId: "supp-psy",
     description: "Psychology uniform trousers — female cut.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("PSY-PANT-001-F-FRONT-CUTOUT.webp"),
+    price: demoPrice("PSY-PANT-001-F"), imageUrl: showcase("PSY-PANT-001-F-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-PSY-PANT-001-M", sku: "PSY-PANT-001-M",
     title: "PSY Trousers (Male)", categoryId: "supp-psy",
     description: "Psychology uniform trousers — male cut.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("PSY-PANT-001-M-FRONT-CUTOUT.webp"),
+    price: demoPrice("PSY-PANT-001-M"), imageUrl: showcase("PSY-PANT-001-M-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-PSY-SKRT-001", sku: "PSY-SKRT-001",
     title: "PSY Skirt", categoryId: "supp-psy",
     description: "Psychology uniform skirt.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("PSY-SKRT-001-FRONT-CUTOUT.webp"),
+    price: demoPrice("PSY-SKRT-001"), imageUrl: showcase("PSY-SKRT-001-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-PSY-TOP-001", sku: "PSY-TOP-001",
     title: "PSY Top", categoryId: "supp-psy",
     description: "Psychology uniform top.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("PSY-TOP-001-FRONT-CUTOUT.webp"),
+    price: demoPrice("PSY-TOP-001"), imageUrl: showcase("PSY-TOP-001-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-PSY-TOP-002", sku: "PSY-TOP-002",
     title: "PSY Top (variant)", categoryId: "supp-psy",
     description: "Psychology uniform top — alternate style.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("PSY-TOP-002-FRONT-CUTOUT.webp"),
+    price: demoPrice("PSY-TOP-002"), imageUrl: showcase("PSY-TOP-002-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
 
@@ -117,56 +123,56 @@ export const supplementalProducts: Product[] = [
     id: "supp-HM-BLAZ-001-F", sku: "HM-BLAZ-001-F",
     title: "HM Blazer (Female)", categoryId: "supp-hm",
     description: "Hospitality Management uniform blazer — female cut.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("HM-BLAZ-001-F-FRONT-CUTOUT.webp"),
+    price: demoPrice("HM-BLAZ-001-F"), imageUrl: showcase("HM-BLAZ-001-F-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-HM-BLAZ-001-M", sku: "HM-BLAZ-001-M",
     title: "HM Blazer (Male)", categoryId: "supp-hm",
     description: "Hospitality Management uniform blazer — male cut.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("HM-BLAZ-001-M-FRONT-CUTOUT.webp"),
+    price: demoPrice("HM-BLAZ-001-M"), imageUrl: showcase("HM-BLAZ-001-M-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-HM-PANT-001", sku: "HM-PANT-001",
     title: "HM Trousers", categoryId: "supp-hm",
     description: "Hospitality Management uniform trousers.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("HM-PANT-001-FRONT-CUTOUT.webp"),
+    price: demoPrice("HM-PANT-001"), imageUrl: showcase("HM-PANT-001-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-HM-SKRT-001", sku: "HM-SKRT-001",
     title: "HM Skirt", categoryId: "supp-hm",
     description: "Hospitality Management uniform skirt.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("HM-SKRT-001-FRONT-CUTOUT.webp"),
+    price: demoPrice("HM-SKRT-001"), imageUrl: showcase("HM-SKRT-001-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-HM-TOP-001", sku: "HM-TOP-001",
     title: "HM Top", categoryId: "supp-hm",
     description: "Hospitality Management uniform top.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("HM-TOP-001-FRONT-CUTOUT.webp"),
+    price: demoPrice("HM-TOP-001"), imageUrl: showcase("HM-TOP-001-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-HM-TOP-002", sku: "HM-TOP-002",
     title: "HM Top (variant)", categoryId: "supp-hm",
     description: "Hospitality Management uniform top — alternate style.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("HM-TOP-002-FRONT-CUTOUT.webp"),
+    price: demoPrice("HM-TOP-002"), imageUrl: showcase("HM-TOP-002-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-HM-VEST-001-F", sku: "HM-VEST-001-F",
     title: "HM Vest (Female)", categoryId: "supp-hm",
     description: "Hospitality Management uniform vest — female cut.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("HM-VEST-001-F-FRONT-CUTOUT.webp"),
+    price: demoPrice("HM-VEST-001-F"), imageUrl: showcase("HM-VEST-001-F-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
   {
     id: "supp-HM-VEST-001-M", sku: "HM-VEST-001-M",
     title: "HM Vest (Male)", categoryId: "supp-hm",
     description: "Hospitality Management uniform vest — male cut.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("HM-VEST-001-M-FRONT-CUTOUT.webp"),
+    price: demoPrice("HM-VEST-001-M"), imageUrl: showcase("HM-VEST-001-M-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
 
@@ -177,8 +183,7 @@ export const supplementalProducts: Product[] = [
   // being duplicated into two product cards -- the real SHS/College category
   // ids live only in the production database, so the frontend resolves them
   // at request time (frontend/src/api.ts) and passes them in. No standalone
-  // "Traditional (College/SHS)" filter chip is reintroduced. Price is unverified,
-  // so it stays PRICE_ON_INQUIRY rather than a fabricated number.
+  // "Traditional (College/SHS)" filter chip is reintroduced.
   // TRAD-TOP-001/002 remain removed: they were visually compared against the
   // official product photos and are the same garments as COL-BLSE-F (female
   // blouse, identical NJ-1900 shield, piping and cut) and COL-POLO-M (male
@@ -188,7 +193,7 @@ export const supplementalProducts: Product[] = [
     id: "supp-TRAD-SKRT-001", sku: "TRAD-SKRT-001",
     title: "Traditional Skirt", categoryId: "supp-trad",
     description: "Traditional uniform skirt, shared by the SHS and College traditional sets.",
-    price: PRICE_ON_INQUIRY, imageUrl: showcase("TRAD-SKRT-001-FRONT-CUTOUT.webp"),
+    price: demoPrice("TRAD-SKRT-001"), imageUrl: showcase("TRAD-SKRT-001-FRONT-CUTOUT.webp"),
     isFeatured: false, isActive: true, supplemental: true,
   },
 ];
