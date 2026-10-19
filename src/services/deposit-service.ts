@@ -16,7 +16,7 @@ export const refundCompletion=z.object({refundReference:z.string().trim().min(3)
 export const refundDecision=z.object({approve:z.boolean(),reason:z.string().trim().min(3).max(500)}).strict();
 
 export function moneyCents(value:unknown){const text=String(value);if(!/^\d+(\.\d{1,2})?$/.test(text))throw new AppError("VALIDATION_ERROR","Invalid currency amount.");const[whole,fraction=""]=text.split(".");const cents=Number(whole)*100+Number(fraction.padEnd(2,"0"));if(!Number.isSafeInteger(cents))throw new AppError("VALIDATION_ERROR","Currency amount is too large.");return cents;}
-export const depositAmount=(orderTotal:unknown,policy="200.00")=>Math.min(moneyCents(orderTotal),moneyCents(policy));
+export function depositAmount(orderTotal:unknown,policy:unknown){const amount=moneyCents(policy);if(amount<=0)throw new AppError("CONFIGURATION_ERROR","ReservationDepositAmount must be greater than zero.");return Math.min(moneyCents(orderTotal),amount);}
 export function addCampusOperatingDays(readyAt:Date,days:number,closures:Iterable<string>){if(!Number.isInteger(days)||days<1)throw new AppError("CONFIGURATION_ERROR","Pickup operating-day policy is invalid.");const closed=new Set(closures),cursor=new Date(readyAt);let remaining=days;while(remaining){cursor.setUTCDate(cursor.getUTCDate()+1);const manila=new Date(cursor.getTime()+8*60*60*1000),key=manila.toISOString().slice(0,10),weekday=manila.getUTCDay();if(weekday!==0&&weekday!==6&&!closed.has(key))remaining--;}return cursor;}
 
 export class DepositService{

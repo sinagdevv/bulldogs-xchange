@@ -4,16 +4,6 @@ import type {ApiFailure,ApiSuccess,ApprovalHistory,Availability,CatalogQuery,Cat
 import {presentCatalogProduct} from "./product-images";
 import {isStaticPreview,previewUnavailable} from "./deployment-mode";
 import {filterSupplemental,isSupplementalId,supplementalCategories,supplementalProducts} from "./supplemental-catalog";
-/** SKUs that exist in the official DB but must not appear in customer-facing browsing/search/suggestions (e.g. no verified stock/photo). Admin inventory and order history are unaffected -- this only filters the public products() response. */
-const CUSTOMER_HIDDEN_SKUS = new Set([
-  "MRC-SWEAT",
-  "SHS-PANTS-F",
-  "SHS-PANTS-M",
-  "COL-PANTS-F",
-  "COL-PANTS-M",
-  "COL-PANTS-W",
-]);
-
 /**
  * Resolves the real SHS/College official category ids (as assigned in the
  * production database) so a supplemental item in CROSS_LISTED_SKUS can be
@@ -93,7 +83,7 @@ export class ApiClient{
   session(signal?:AbortSignal){const fixture=this.auth.getFixtureUser();return fixture?Promise.resolve<Session>({authenticated:true,user:fixture}):fixtureMode?Promise.resolve<Session>({authenticated:false,user:null,onboardingRequired:false}):this.request<Session>("session",{signal});}
   onboard(input:{schoolId?:string;fullName?:string;customerType?:string;departmentId?:number}={}){return this.request<User>("onboarding/customer",{method:"POST",body:JSON.stringify(input)});}
   profile(signal?:AbortSignal){return this.request<User>("profile",{signal});}categories(signal?:AbortSignal){return this.request<Category[]>("categories",{signal}).then(categories=>[...categories.map(category=>({...category,title:category.title.replace(/^Synthetic Demo Merchandise$/i,"Campus merchandise").replace(/^Demo Apparel$/i,"Apparel")})),...supplementalCategories]);}
-  products(queryOrSignal:CatalogQuery|AbortSignal={},signal?:AbortSignal){const query=queryOrSignal instanceof AbortSignal?{}:queryOrSignal,requestSignal=queryOrSignal instanceof AbortSignal?queryOrSignal:signal,params=new URLSearchParams({active:"true"});Object.entries(query).forEach(([k,v])=>{if(v!==undefined&&v!=="")params.set(k,String(v));});return this.request<Product[]>(`products?${params}`,{signal:requestSignal}).then(async products=>{const crossIds=query.category?Object.values(await resolveOfficialCategoryIds(this,requestSignal)).filter((x):x is string=>!!x):[];return[...products.map(presentCatalogProduct).filter(p=>!CUSTOMER_HIDDEN_SKUS.has(p.sku)),...filterSupplemental(query.category,query.search,crossIds)];});}
+  products(queryOrSignal:CatalogQuery|AbortSignal={},signal?:AbortSignal){const query=queryOrSignal instanceof AbortSignal?{}:queryOrSignal,requestSignal=queryOrSignal instanceof AbortSignal?queryOrSignal:signal,params=new URLSearchParams({active:"true"});Object.entries(query).forEach(([k,v])=>{if(v!==undefined&&v!=="")params.set(k,String(v));});return this.request<Product[]>(`products?${params}`,{signal:requestSignal}).then(async products=>{const crossIds=query.category?Object.values(await resolveOfficialCategoryIds(this,requestSignal)).filter((x):x is string=>!!x):[];return[...products.map(presentCatalogProduct),...filterSupplemental(query.category,query.search,crossIds)];});}
   product(id:string,signal?:AbortSignal){if(isSupplementalId(id)){const p=supplementalProducts.find(x=>x.id===id);if(p)return Promise.resolve(p);return Promise.reject(new ApiError("NOT_FOUND","Product not found.",404));}return this.request<Product>(`products/${encodeURIComponent(id)}`,{signal}).then(presentCatalogProduct);}variants(id:string,signal?:AbortSignal){if(isSupplementalId(id))return Promise.resolve([]);return this.request<Variant[]>(`products/${encodeURIComponent(id)}/variants`,{signal});}availability(id:string,signal?:AbortSignal){if(isSupplementalId(id))return Promise.resolve([]);return this.request<Availability[]>(`products/${encodeURIComponent(id)}/availability`,{signal});}
   reservations(signal?:AbortSignal){return this.request<Reservation[]>("reservations",{signal});}reservation(id:string,signal?:AbortSignal){return this.request<ReservationDetails>(`reservations/${encodeURIComponent(id)}`,{signal});}createReservation(items:{productVariantId:string;quantity:number}[]){return this.request<Reservation>("reservations",{method:"POST",headers:{"Idempotency-Key":crypto.randomUUID()},body:JSON.stringify({items})});}cancelReservation(id:string){return this.request<Reservation>(`reservations/${encodeURIComponent(id)}/cancel`,{method:"POST"});}
   myQueue(signal?:AbortSignal){return this.request<QueueRecord[]>("queue/me",{signal});}queueStatus(signal?:AbortSignal){return this.request<QueueSummary>("queue/status",{signal});}joinQueue(reservationId:string,queueType:"Express"|"Regular"){return this.request<QueueRecord>("queue/join",{method:"POST",body:JSON.stringify({reservationId,queueType})});}leaveQueue(){return this.request<QueueRecord>("queue/leave",{method:"POST"});}
