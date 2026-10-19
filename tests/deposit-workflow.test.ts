@@ -89,3 +89,47 @@ describe("two-operator rule (refund payout)", () => {
     expect(approvedBy !== payoutActor).toBe(true);
   });
 });
+// -- SQL DECIMAL normalization (regression for BX-2026-0133) --
+// PostgreSQL returns NUMERIC/DECIMAL aggregate columns as strings (pg driver
+// behaviour). The deposit-service must normalise them before calling moneyCents
+// so that values such as "897.00" (SUM result) or JavaScript number 897 both
+// parse correctly.
+
+describe("moneyCents - SQL DECIMAL normalization", () => {
+  it("accepts PostgreSQL NUMERIC string with 2 dp (typical SUM result)", () => {
+    // COALESCE(SUM(Quantity*UnitPrice),0) returns e.g. "897.00" via pg driver
+    expect(moneyCents("897.00")).toBe(89700);
+  });
+
+  it("accepts JavaScript number returned by driver for whole peso amounts", () => {
+    // Some drivers return numeric columns as plain JS numbers
+    expect(moneyCents(897)).toBe(89700);
+    expect(moneyCents(100)).toBe(10000);
+  });
+
+  it("toFixed(2) pre-normalisation handles JS number correctly", () => {
+    // This is what deposit-service.ts now does before calling moneyCents
+    expect(moneyCents(Number("897.00").toFixed(2))).toBe(89700);
+    expect(moneyCents(Number(897).toFixed(2))).toBe(89700);
+    expect(moneyCents(Number("100.00").toFixed(2))).toBe(10000);
+  });
+
+  it("toFixed(2) pre-normalisation handles null/undefined fallback to 0", () => {
+    // undefined column (missing canonical mapping) coalesces to 0
+    // Cast to unknown to simulate a DB row field that the column mapper missed
+    const missingCol: unknown = undefined;
+    const nullCol: unknown = null;
+    expect(moneyCents(Number(missingCol ?? 0).toFixed(2))).toBe(0);
+    expect(moneyCents(Number(nullCol ?? 0).toFixed(2))).toBe(0);
+  });
+
+  it("rejects undefined directly (guard for missing canonical mapping)", () => {
+    // String(undefined) === "undefined" which must not pass the validator
+    expect(() => moneyCents(undefined)).toThrow("Invalid currency amount.");
+  });
+
+  it("rejects null directly", () => {
+    // String(null) === "null" which must not pass the validator
+    expect(() => moneyCents(null)).toThrow("Invalid currency amount.");
+  });
+});

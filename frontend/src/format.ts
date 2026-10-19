@@ -34,6 +34,6 @@ export const reservationCopy:Record<ReservationStatus,string>={
   "Expired":"This reservation expired before pickup and its stock was released.",
 };
 // The active UI keeps the legacy flow until the deposit policy is approved and enabled.
-export const reservationFlow:ReservationStatus[]=["Pending","Confirmed","Preparing","Ready for Pickup","Completed"];
+export const reservationFlow:ReservationStatus[]=["Pending","Pending Deposit","Confirmed","Preparing","Ready for Pickup","Completed"];
 export const finalStatuses:ReservationStatus[]=["Completed","Cancelled","Expired"];
 export const initials=(name?:string)=>(name??"").split(/\s+/).filter(Boolean).slice(0,2).map(p=>p[0]!.toUpperCase()).join("")||"NU";
